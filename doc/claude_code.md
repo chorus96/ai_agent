@@ -3,6 +3,20 @@
 > Anthropic이 만든 터미널 기반 AI 코딩 에이전트인 **Claude Code**에 대한 한글 인터넷 자료를 수집·정리한 문서입니다.
 > 최종 정리일: 2026-08-27
 
+## 목차
+
+1. [Claude Code란?](#1-claude-code란)
+2. [설치 및 시작하기](#2-설치-및-시작하기)
+3. [필수 명령어](#3-필수-명령어)
+4. [핵심 개념](#4-핵심-개념)
+5. [한글 자료 링크 모음](#5-한글-자료-링크-모음)
+6. [초보자를 위한 팁](#6-초보자를-위한-팁)
+7. [WikiDocs 책 별도 정리](#7-wikidocs-책-별도-정리)
+8. [서점 판매 도서 (출간 서적)](#8-서점-판매-도서-출간-서적)
+9. [GitHub 저장소 모음](#9-github-저장소-모음) — Agent SDK 포함
+
+> 💡 Claude Code 심화 개념(Plugin·MCP·Memory·Agent SDK·Subagents·Hooks·Skills·권한 모드·Plan Mode·Slash Commands)은 [`claude_code_tips.md`](./claude_code_tips.md) 참고.
+
 ---
 
 ## 1. Claude Code란?
