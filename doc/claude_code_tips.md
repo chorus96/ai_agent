@@ -17,6 +17,7 @@
 9. [Slash Commands (슬래시 명령어)](#slash-commands-슬래시-명령어)
 10. [Slash Commands vs Skill 비교](#slash-commands-vs-skill-비교)
 11. [Checkpoints & Rewind (체크포인트·되감기)](#checkpoints--rewind-체크포인트되감기)
+12. [Worktree vs Checkpoint](#worktree-vs-checkpoint)
 
 > 📚 관련 문서: 한글 자료·도서·GitHub 모음은 [`claude_code.md`](./claude_code.md), CLI 명령어·플래그·슬래시 명령어 레퍼런스는 [`claude_code_cli.md`](./claude_code_cli.md) 참고.
 
@@ -945,3 +946,70 @@ description: API design patterns for this codebase
 ### 참고 링크
 
 - [Checkpointing — 공식 문서(한국어)](https://code.claude.com/docs/ko/checkpointing)
+
+---
+
+## Worktree vs Checkpoint
+
+이 둘은 비교 대상이라기보다 **아예 다른 문제를 푸는 기능**입니다.
+
+> - **Worktree** = **"공간적 격리"** — 여러 작업을 **동시에 나란히** 돌리기 위해 저장소의 **격리된 복사본**을 만드는 것 (git 기능)
+> - **Checkpoint** = **"시간적 되돌리기"** — 한 세션 안에서 편집을 **자동 스냅샷**해 **이전 상태로 undo**하는 것 (Claude Code 자체 기능)
+
+한쪽은 **"여러 갈래를 병렬로"**, 다른 쪽은 **"한 갈래를 시간축으로 되감기"** 입니다.
+
+### 상세 비교
+
+| 항목 | **Worktree** | **Checkpoint & Rewind** |
+| --- | --- | --- |
+| **목적** | 병렬 작업 격리 (공간) | 실행 취소·되돌리기 (시간) |
+| **기반** | **git worktree** (git 기능) | Claude Code **자체 스냅샷** (git 아님) |
+| **만드는 법** | `claude --worktree <name>` / `-w`, "worktree에서 작업해줘" | 자동 (매 프롬프트 직전) |
+| **격리 단위** | 별도 작업 디렉토리 + 별도 브랜치 | 단일 세션 내 파일 스냅샷 |
+| **추적 범위** | 파일시스템 전체 (git이 관리) | **편집 도구(Edit/Write) 변경만** |
+| **Bash 변경** | 추적됨 (git이 봄) | **추적 안 됨** (rm/mv/cp 복구 불가) |
+| **되돌리기** | git 명령으로 (커밋/브랜치) | `/rewind`(별칭 `/undo`)·`Esc Esc` |
+| **영속성** | 브랜치로 남김·병합 가능 | 세션용 임시(최근 100개, 30일) |
+| **동시 실행** | ✅ 여러 세션 병렬 | ❌ 한 세션 내 시간 이동 |
+
+### 구조로 보면
+
+```
+[Worktree] — 공간적 (병렬)          [Checkpoint] — 시간적 (되감기)
+ repo/                              한 세션의 타임라인:
+ ├─ (메인 체크아웃)                    프롬프트1 ─▶ [cp1]
+ └─ .claude/worktrees/               프롬프트2 ─▶ [cp2]
+    ├─ feature-auth/  ← 세션 A        프롬프트3 ─▶ [cp3] ← 지금
+    └─ bugfix-123/    ← 세션 B                    │
+    (서로 파일 안 건드림)               /rewind ───┘ cp1로 되돌리기
+```
+
+### 언제 무엇을?
+
+**Worktree** — 여러 작업을 **동시에** 하고 싶을 때
+- 한 터미널에서 기능 개발 + 다른 터미널에서 버그 수정 (파일 충돌 없이)
+- PR 리뷰용 격리 체크아웃: `claude -w "#1234"`
+- 서브에이전트/백그라운드 세션 격리 (`isolation: worktree`)
+
+**Checkpoint/Rewind** — **한 작업 중** 잘못됐을 때 되돌리고 싶을 때
+- Claude가 코드를 망가뜨렸을 때 이전 상태로 빠르게 undo
+- 큰 변경을 "언제든 되돌릴 수 있다"는 확신으로 시도
+
+### 함께 쓰기
+
+둘은 **상호 보완적**입니다. worktree 안에서도 checkpoint가 작동하므로:
+- **worktree로 병렬 브랜치를 격리**하고, 각 worktree 세션 안에서 **checkpoint로 시행착오를 되돌리며** 작업
+
+### ⚠️ 공통 오해 — 둘 다 git 커밋을 대체하지 않음
+
+- **Checkpoint**는 "로컬 undo", **Git이 "영구 기록"**
+- **Worktree**는 격리 공간일 뿐, 변경을 남기려면 **커밋/병합** 필요 (커밋·추적 파일 없이 종료하면 worktree가 자동 삭제됨)
+
+### 핵심 정리
+
+> **Worktree = "동시에 여러 갈래로 작업"(공간·git 기반·병렬)**, **Checkpoint = "한 갈래를 이전 시점으로 되감기"(시간·Claude 자체·undo)**.
+> 병렬 격리가 필요하면 Worktree, 실수 되돌리기가 필요하면 Checkpoint이며, 둘은 함께 쓸 수 있습니다.
+
+### 참고 링크
+
+- [worktree로 병렬 세션 실행 — 공식 문서(한국어)](https://code.claude.com/docs/ko/worktrees) · [Checkpointing](https://code.claude.com/docs/ko/checkpointing)
