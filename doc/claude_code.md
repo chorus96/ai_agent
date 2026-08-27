@@ -210,4 +210,35 @@ Claude Code를 **한 권의 책**으로 체계적으로 다룬 WikiDocs 자료�
 
 ---
 
+## 8. 서점 판매 도서 (출간 서적)
+
+교보문고·예스24·알라딘 등 서점에서 **판매 중인 Claude Code(클로드 코드) 관련 종이책/전자책**을 정리했습니다. (가격·쪽수 등은 출간 시점 기준이며 변동될 수 있습니다.)
+
+| 도서명 | 저자 | 출판사 | 출간 | 정가 | 비고 |
+| --- | --- | --- | --- | --- | --- |
+| 클로드 코드 완벽 가이드 — Claude Code로 바이브 코딩하기<br>(교보 표기: 요즘 바이브 코딩 클로드 코드 완벽 가이드) | 최지호(코드팩토리) | 골든래빗 | 2025-09 | 24,000원 | ISBN 9791194383437 |
+| 혼자 공부하는 바이브 코딩 with 클로드 코드 | 조태호 | 한빛미디어 | 2025-12 | — | '혼자 공부하는' 시리즈, 15개 실습 프로젝트 |
+| 클로드 코드를 활용한 바이브 코딩 완벽 입문 | 히라카와 토모히데(번역서) | 위키북스 | 2026-03 | 26,000원 | 324쪽, MCP·병렬 처리·서브에이전트·보안 |
+| 밑바닥부터 따라하면서 배우는 클로드 코드 완전 정복 | — | 위키북스 | 2026-06 | 28,000원 | 360쪽, 입문자~풀스택 |
+| 클로드 코드로 시작하는 실전 에이전틱 코딩 | Goos Kim | 더 타이즈 | 2026 | 33,000원 | 에이전트 오케스트레이션·하네스 엔지니어링 |
+| 클로드 코드 마스터 | 이남희 | — | — | — | 교보문고 판매 |
+
+### 도서별 링크
+
+- **클로드 코드 완벽 가이드 (골든래빗)** — [골든래빗](https://goldenrabbit.co.kr/books/9791194383437) · [교보문고](https://product.kyobobook.co.kr/detail/S000217347037)
+- **혼자 공부하는 바이브 코딩 with 클로드 코드 (한빛미디어)** — [한빛미디어](https://www.hanbit.co.kr/store/books/look.php?p_code=B1785590517) · [교보문고](https://product.kyobobook.co.kr/detail/S000218728879) · [예스24](https://www.yes24.com/product/goods/167573138) · [알라딘](https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=379260002)
+- **클로드 코드를 활용한 바이브 코딩 완벽 입문 (위키북스)** — [위키북스](https://wikibook.co.kr/claude-code/) · [교보문고](https://product.kyobobook.co.kr/detail/S000219349783) · [예스24](https://www.yes24.com/product/goods/180513899)
+- **밑바닥부터 따라하면서 배우는 클로드 코드 완전 정복 (위키북스)** — [위키북스](https://wikibook.co.kr/mastering-claude-code/)
+- **클로드 코드로 시작하는 실전 에이전틱 코딩 (더 타이즈)** — [교보문고](https://product.kyobobook.co.kr/detail/S000219929026) · [예스24](https://www.yes24.com/product/goods/189211422) · [알라딘](https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=392619689) · [나무위키](https://namu.wiki/w/%ED%81%B4%EB%A1%9C%EB%93%9C%20%EC%BD%94%EB%93%9C%EB%A1%9C%20%EC%8B%9C%EC%9E%91%ED%95%98%EB%8A%94%20%EC%8B%A4%EC%A0%84%20%EC%97%90%EC%9D%B4%EC%A0%84%ED%8B%B1%20%EC%BD%94%EB%94%A9)
+- **클로드 코드 마스터** — [교보문고](https://product.kyobobook.co.kr/detail/S000219725328)
+
+### 무료 공개 도서 (온라인)
+
+- **바이브코딩 에센셜 with Claude Code** — 이호준 저, 위니북스. 무료 오픈소스 책(PDF 다운로드 가능) — [온라인 보기](https://www.books.weniv.co.kr/essentials-vibecoding/chapter01/01-2)
+- **클로드 코드 가이드** — 박재홍 저(WikiDocs), 예스24 전자책으로도 판매 — [예스24](https://www.yes24.com/product/goods/182064644)
+
+> ⚠️ 참고: 위 도서 목록·서지 정보(정가·쪽수·출간일)는 웹 검색 결과를 기반으로 정리한 것으로, 일부 값은 확인되지 않았거나 판본에 따라 다를 수 있습니다. 구매 전 각 서점 페이지에서 최신 정보를 확인하세요.
+
+---
+
 > 본 문서의 링크·요약은 웹 검색 및 공식 문서를 기반으로 정리되었으며, 각 블로그의 상세 내용과 최신 정보는 원문 링크에서 확인하는 것을 권장합니다.
