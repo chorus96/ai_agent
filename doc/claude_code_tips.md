@@ -56,3 +56,80 @@ Plugin (최상위 패키지)
 
 - [MCP를 통해 Claude Code를 도구에 연결하기 — 공식 문서(한국어)](https://code.claude.com/docs/ko/mcp)
 - [Claude code — plugin, commands, skills, agents, hooks 에 대하여 — Velog](https://velog.io/@ghdtjrrl94/Claude-code-plugin-commands-skills-agents-hooks-%EC%97%90-%EB%8C%80%ED%95%98%EC%97%AC)
+
+---
+
+## Memory(메모리)의 역할 및 의미
+
+Claude Code의 **memory(메모리)** 는 세션마다 새 컨텍스트 윈도우로 시작하는 Claude가 **세션을 넘어 지식을 이어가도록 해주는 장치**입니다.
+
+> 각 Claude Code 세션은 **매번 빈 컨텍스트 윈도우**로 시작합니다. 즉 이전 대화를 기억하지 못합니다.
+> memory는 이 단절을 메워, "매번 다시 설명해야 하는 일"을 없애줍니다.
+
+### 두 가지 메모리 시스템
+
+memory는 크게 **두 가지 상호 보완적인 시스템**으로 나뉩니다. 둘 다 **매 대화 시작 시 자동 로드**되며, Claude는 이를 강제 설정이 아니라 **참고 컨텍스트**로 취급합니다.
+
+| 구분 | **CLAUDE.md** | **자동 메모리(Auto Memory)** |
+| --- | --- | --- |
+| **작성자** | 👤 사용자(사람)가 작성 | 🤖 Claude가 스스로 작성 |
+| **내용** | 지침·규칙 (해야 할 것) | 학습·패턴 (알아낸 것) |
+| **성격** | "이렇게 일해라"는 **지시** | "이 프로젝트는 이렇더라"는 **메모** |
+| **예시** | 코딩 표준, 빌드 명령, 아키텍처 규칙 | 빌드 명령 발견, 디버깅 인사이트, 선호도 |
+| **저장 위치** | `CLAUDE.md` 파일 (git 공유 가능) | `~/.claude/projects/<project>/memory/` (로컬) |
+| **로드 시점** | 모든 세션 시작 시 **전체** 로드 | 모든 세션 시작 시 `MEMORY.md`의 앞 200줄/25KB 로드 |
+
+### 1) CLAUDE.md — 사람이 주는 "지속 지침"
+
+Claude에게 매 세션 지속적으로 적용할 규칙을 담는 마크다운 파일입니다. **범위(scope)별로 계층**을 가지며, 넓은 범위 → 좁은 범위 순으로 로드됩니다.
+
+| 범위 | 위치 | 용도 |
+| --- | --- | --- |
+| **관리 정책(조직)** | `/etc/claude-code/CLAUDE.md` 등 | 회사 표준·보안 정책 (개별 제외 불가) |
+| **사용자** | `~/.claude/CLAUDE.md` | 모든 프로젝트 공통 개인 선호 |
+| **프로젝트** | `./CLAUDE.md` 또는 `./.claude/CLAUDE.md` | 팀 공유 (git 커밋) |
+| **로컬** | `./CLAUDE.local.md` | 개인용, `.gitignore` 대상 |
+
+**추가 팁**
+
+- `/init` 명령으로 코드베이스를 분석한 시작용 CLAUDE.md를 자동 생성
+- `@경로/파일` 구문으로 다른 파일(README, package.json 등)을 **import** 가능 (최대 4홉)
+- **200줄 이하 · 구체적 · 구조화**가 준수율을 높이는 핵심 (예: "코드를 잘 포맷" ❌ → "2칸 들여쓰기 사용" ✅)
+- 대규모 프로젝트는 `.claude/rules/` 로 주제별 분리, `paths:` frontmatter로 **특정 파일에만 적용되는 규칙** 지정 가능
+- `AGENTS.md`는 직접 읽지 않으므로, 필요하면 CLAUDE.md에서 `@AGENTS.md`로 가져오거나 심볼릭 링크
+
+### 2) 자동 메모리 — Claude가 스스로 쌓는 "학습 노트"
+
+사용자가 아무것도 안 해도 Claude가 작업 중 알아낸 것(빌드 명령, 디버깅 인사이트, 코드 스타일 선호 등)을 **스스로 노트로 저장**합니다.
+
+- 저장소: `~/.claude/projects/<project>/memory/` — `MEMORY.md`(인덱스) + 주제별 파일(`debugging.md` 등)
+- `MEMORY.md`의 앞 **200줄/25KB만** 세션 시작 시 로드, 나머지 주제 파일은 필요할 때 읽음
+- **컴퓨터 로컬** 저장 — 같은 git 저장소의 worktree/하위 디렉토리는 공유하지만, 다른 컴퓨터·클라우드로는 공유되지 않음
+- 기본 활성화. `/memory` 토글 또는 `autoMemoryEnabled: false`(또는 `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`)로 끌 수 있음
+- UI에 **"Writing memory" / "Recalled memory"** 표시로 동작 확인
+- 서브에이전트도 자체 자동 메모리 유지 가능
+
+### memory의 한계 (중요)
+
+> CLAUDE.md 내용은 시스템 프롬프트가 아니라 **시스템 프롬프트 뒤의 사용자 메시지**로 전달됩니다.
+> 따라서 Claude가 읽고 따르려 하지만 **엄격한 강제는 아닙니다.**
+
+- **반드시 강제**해야 하는 규칙(커밋 전 린트 실행 등)은 memory가 아니라 **Hooks**로 구현
+- 도구/명령/경로를 하드 차단하려면 **관리 설정(`permissions.deny`)** 사용
+- `/compact`(압축) 후에도 **프로젝트 루트 CLAUDE.md는 다시 로드**되어 생존 (단, 대화로만 준 지침은 사라짐)
+
+### 관리 명령어
+
+- **`/memory`** — 현재 로드된 CLAUDE.md·규칙 파일 목록 확인, 자동 메모리 폴더 열기/편집, 자동 메모리 토글
+- **`/init`** — 프로젝트 CLAUDE.md 생성
+- Claude에게 "이건 CLAUDE.md에 추가해줘" 또는 "~를 기억해줘"라고 말하면 각각 CLAUDE.md/자동 메모리에 저장
+
+### 한 줄 요약
+
+> **memory = "세션이 바뀌어도 유지되는 지식"**.
+> **CLAUDE.md**는 *사람이 주는 규칙*, **자동 메모리**는 *Claude가 스스로 쌓는 학습 노트*.
+> 둘 다 매 세션 자동 로드되지만 강제가 아닌 컨텍스트이므로, 꼭 강제할 규칙은 Hooks/설정으로 처리합니다.
+
+### 참고 링크
+
+- [Claude가 프로젝트를 기억하는 방법 — 공식 문서(한국어)](https://code.claude.com/docs/ko/memory)
