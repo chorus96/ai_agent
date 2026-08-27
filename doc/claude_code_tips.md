@@ -133,3 +133,84 @@ Claude에게 매 세션 지속적으로 적용할 규칙을 담는 마크다운 
 ### 참고 링크
 
 - [Claude가 프로젝트를 기억하는 방법 — 공식 문서(한국어)](https://code.claude.com/docs/ko/memory)
+
+---
+
+## Claude Agent SDK
+
+**Claude Agent SDK**(구 *Claude Code SDK*)는 **Claude Code를 라이브러리로 사용해 직접 AI 에이전트를 만들 수 있게 해주는 개발 키트**입니다. 터미널에서 사람이 쓰는 Claude Code가 아니라, **여러분의 코드(프로그램) 안에서 Claude Code의 에이전트 엔진을 돌리는 것**이 핵심입니다.
+
+> Claude Code를 움직이는 것과 **동일한 도구·에이전트 루프(agent loop)·컨텍스트 관리**를 Python/TypeScript로 프로그래밍할 수 있게 노출한 라이브러리.
+
+여기서 **에이전트(agent)** 란 스스로 단계를 계획하고, 파일을 읽고, 명령을 실행하고, 코드를 수정하는 **도구(tool)를 호출하며** 작업을 완수하는 애플리케이션을 뜻합니다. 이 "도구 호출 루프"를 직접 구현하지 않아도 SDK가 대신 돌려줍니다.
+
+### 다른 Claude 도구와의 차이
+
+| 목적 | 사용할 것 | 이유 |
+| --- | --- | --- |
+| 도구 루프를 직접 구현하지 않고 **에이전트를 만들고 싶다** | **Agent SDK** | 내 프로세스 안에서 에이전트 루프를 돌리는 라이브러리 (Python/TS) |
+| 터미널에서 대화형 개발·일회성 작업 | **Claude Code CLI** | 일상적 대화형 사용에 최적 |
+| API를 직접 호출하고 **도구 루프를 직접 구현** | **Client SDK** (Anthropic API) | Claude Code가 아닌 API 직접 접근 |
+| 샌드박스·세션 인프라 없이 **장기/비동기 에이전트** 운영 | **Managed Agents** | Anthropic이 에이전트·샌드박스를 호스팅하는 별도 제품 |
+
+> 💡 SDK는 **Python·TypeScript 전용**입니다. 다른 언어에서 같은 에이전트 루프를 쓰려면 CLI를 `-p` + `--output-format json`으로 **서브프로세스로 실행**(headless)하면 됩니다.
+
+### 제공하는 기능 (Claude Code의 강점을 그대로)
+
+| 기능 | 설명 |
+| --- | --- |
+| **내장 도구(Built-in tools)** | 파일 읽기/쓰기/수정, 명령 실행, 웹 검색 |
+| **Hooks** | 에이전트 생명주기의 특정 지점에서 커스텀 코드 실행 |
+| **Subagents** | 집중된 하위 작업을 위한 전문 에이전트 생성 |
+| **MCP** | Model Context Protocol로 외부 도구·데이터 소스 연결 |
+| **Permissions** | 어떤 도구를 자동 실행/승인 필요로 할지 제어 |
+| **Sessions** | 교환 간 컨텍스트 유지, 재개(resume)·분기(fork) 가능 |
+| **Skills / Commands / Memory** | 프로젝트의 `.claude/`, `~/.claude/`에서 Claude Code와 동일하게 자동 로드 |
+| **Plugins** | skills·agents·hooks·MCP 서버를 묶어 로컬 경로로 로드 |
+
+### 시작 방법
+
+```bash
+# Python
+pip install claude-agent-sdk
+
+# TypeScript
+npm install @anthropic-ai/claude-agent-sdk
+```
+
+- **인증**: API 키 방식 사용 (Anthropic Console에서 발급). Agent SDK로 만든 제품에는 **claude.ai 로그인/요율 사용이 사전 승인 없이는 허용되지 않음** — 반드시 API 키 인증 사용
+- 핵심 진입점은 **`query`** (프롬프트를 주면 에이전트 루프가 돌며 도구를 호출하고 결과 메시지를 스트리밍)
+
+```python
+import anyio
+from claude_agent_sdk import query
+
+async def main():
+    async for message in query(prompt="이 저장소의 버그를 찾아 고쳐줘"):
+        print(message)
+
+anyio.run(main)
+```
+
+### 활용 사례
+
+- **자동 버그 수정 에이전트** — 코드베이스를 탐색해 버그를 찾고 고침 (공식 Quickstart 예제)
+- **코드 리뷰/리팩토링 봇**, CI 파이프라인에 통합된 에이전트
+- **SRE·운영 자동화**, 데이터 파이프라인 에이전트
+- **서브에이전트 오케스트레이션** — 여러 전문 에이전트를 조율하는 복잡한 워크플로우("하네스 엔지니어링")
+
+### 브랜딩 주의사항 (파트너용)
+
+SDK로 만든 제품에 Claude 브랜딩은 선택 사항이며, **"Claude Agent" / "Powered by Claude"는 허용**되지만 **"Claude Code" / "Claude Code Agent" 표기는 금지**입니다. 제품은 자체 브랜드를 유지해야 합니다.
+
+### 핵심 정리
+
+> **Claude Agent SDK = "Claude Code를 라이브러리로"**.
+> CLI가 사람이 터미널에서 쓰는 도구라면, SDK는 **내 프로그램이 Claude Code 엔진(도구·에이전트 루프·컨텍스트·MCP·서브에이전트·Hooks)을 직접 호출**해 커스텀 AI 에이전트를 만드는 방식입니다. Python·TypeScript를 지원하며, API 키로 인증합니다.
+
+### 참고 링크
+
+- [Agent SDK 개요 — 공식 문서](https://code.claude.com/docs/en/agent-sdk/overview)
+- [Quickstart](https://code.claude.com/docs/en/agent-sdk/quickstart)
+- [TypeScript SDK (GitHub)](https://github.com/anthropics/claude-agent-sdk-typescript) · [Python SDK (GitHub)](https://github.com/anthropics/claude-agent-sdk-python)
+- [예제 에이전트 모음 (GitHub)](https://github.com/anthropics/claude-agent-sdk-demos)
