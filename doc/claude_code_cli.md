@@ -24,6 +24,8 @@
 4. [세션 내 슬래시 명령어 (Slash Commands)](#4-세션-내-슬래시-명령어-slash-commands)
 5. [자주 쓰는 예시](#5-자주-쓰는-예시)
 
+> 📚 관련 문서: 한글 자료·도서·GitHub 모음은 [`claude_code.md`](./claude_code.md), 심화 개념·팁(Plugin·MCP·Memory·Agent SDK·Subagents·Hooks·Skills·권한 모드·Plan Mode·Slash Commands 비교)은 [`claude_code_tips.md`](./claude_code_tips.md) 참고.
+
 ---
 
 ## 1. 기본 사용 형태
