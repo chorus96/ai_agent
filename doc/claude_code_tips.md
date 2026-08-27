@@ -3,6 +3,18 @@
 > Claude Code를 사용하면서 알아두면 좋은 개념·팁을 정리한 문서입니다.
 > 최종 정리일: 2026-08-27
 
+## 목차
+
+1. [Plugin vs MCP 비교](#plugin-vs-mcp-비교)
+2. [Memory(메모리)의 역할 및 의미](#memory메모리의-역할-및-의미)
+3. [Claude Agent SDK](#claude-agent-sdk) — 개념·기능·인증(사내 LLM 포함)·오픈소스 여부
+4. [Subagents(서브에이전트) 활용법](#subagents서브에이전트-활용법)
+5. [Hooks(훅) 실전 활용](#hooks훅-실전-활용)
+6. [Skills 만들기](#skills-만들기)
+7. [권한 모드 (Permission Modes)](#권한-모드-permission-modes)
+8. [Plan Mode (계획 모드)](#plan-mode-계획-모드)
+9. [Slash Commands (슬래시 명령어)](#slash-commands-슬래시-명령어)
+
 ---
 
 ## Plugin vs MCP 비교
