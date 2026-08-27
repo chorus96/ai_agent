@@ -236,9 +236,26 @@ SDK로 만든 제품에 Claude 브랜딩은 선택 사항이며, **"Claude Agent
 > **Claude Agent SDK = "Claude Code를 라이브러리로"**.
 > CLI가 사람이 터미널에서 쓰는 도구라면, SDK는 **내 프로그램이 Claude Code 엔진(도구·에이전트 루프·컨텍스트·MCP·서브에이전트·Hooks)을 직접 호출**해 커스텀 AI 에이전트를 만드는 방식입니다. Python·TypeScript를 지원하며, **Console API 키·사내 게이트웨이·Bedrock/Vertex/Foundry** 로 인증할 수 있습니다.
 
+### 오픈소스 여부 · 라이선스
+
+**Agent SDK 자체는 오픈소스입니다 — MIT 라이선스**로 GitHub에 공개되어 있습니다.
+
+| 구성 요소 | 라이선스 / 공개 여부 |
+| --- | --- |
+| Python SDK (`claude-agent-sdk-python`) | **MIT License** (© 2025 Anthropic, PBC) |
+| TypeScript SDK (`claude-agent-sdk-typescript`) | **MIT License** |
+
+단, 두 가지를 구분해야 합니다.
+
+- **SDK 코드(오픈소스) ≠ 모델(비공개)** — SDK 라이브러리 코드는 MIT지만, 뒤에서 추론하는 **Claude 모델 자체는 오픈소스가 아닙니다**. SDK는 API(또는 Bedrock/Vertex/사내 게이트웨이)를 호출하는 **클라이언트**일 뿐이며, 모델 가중치가 열려 있는 것은 아닙니다.
+- **MIT + 상용 이용약관 병행** — 코드는 MIT지만, "이용(모델 호출·서비스 제공)"은 **Anthropic 상용 이용약관(Commercial Terms of Service)** 의 적용을 받습니다. 앞서의 "claude.ai 개인 구독 로그인으로 만든 제품의 제3자 제공 금지" 같은 제약이 여기서 나옵니다.
+
+> **정리**: SDK 소스 코드 → MIT 오픈소스 ✅ (자유 사용·수정·상용화) / Claude 모델 → 비공개(오픈웨이트 아님) / 이용 조건 → MIT + Anthropic 상용 약관 병행
+
 ### 참고 링크
 
 - [Agent SDK 개요 — 공식 문서](https://code.claude.com/docs/en/agent-sdk/overview)
+- [Python SDK LICENSE (MIT)](https://github.com/anthropics/claude-agent-sdk-python/blob/main/LICENSE)
 - [Quickstart](https://code.claude.com/docs/en/agent-sdk/quickstart)
 - [TypeScript SDK (GitHub)](https://github.com/anthropics/claude-agent-sdk-typescript) · [Python SDK (GitHub)](https://github.com/anthropics/claude-agent-sdk-python)
 - [예제 에이전트 모음 (GitHub)](https://github.com/anthropics/claude-agent-sdk-demos)
