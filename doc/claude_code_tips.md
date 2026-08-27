@@ -532,3 +532,205 @@ exit 0
 
 - [hooks를 사용하여 작업 자동화 — 공식 가이드(한국어)](https://code.claude.com/docs/ko/hooks-guide)
 - [Hooks 참조(전체 스키마) — 공식 문서(한국어)](https://code.claude.com/docs/ko/hooks)
+
+---
+
+## Skills 만들기
+
+**Skills(스킬)** 는 **Claude가 할 수 있는 작업을 확장하는 재사용 가능한 지침·절차 패키지**입니다. `SKILL.md` 파일에 지침을 적어두면 Claude가 이를 자기 도구 모음에 추가하고, **관련 있을 때 자동으로 로드**하거나 **`/skill-name`으로 직접 호출**할 수 있습니다.
+
+> 같은 지침·체크리스트·다단계 절차를 반복해서 채팅에 붙여넣거나, CLAUDE.md의 한 섹션이 "사실"이 아니라 "절차"로 자라났을 때 skill로 옮기세요.
+> CLAUDE.md와 달리 **skill 본문은 호출될 때만 로드**되므로(점진적 공개), 긴 참조 자료도 필요할 때까지 토큰 비용이 거의 없습니다.
+
+> 📌 참고: **사용자 정의 슬래시 명령어(`.claude/commands/`)가 Skills로 통합**되었습니다. 기존 `commands/` 파일도 계속 작동하지만, 지원 파일·frontmatter·자동 로드가 되는 Skills가 권장됩니다.
+
+### 만드는 방법 (최소 예시)
+
+각 skill은 `SKILL.md`를 진입점으로 하는 **디렉토리**입니다. **디렉토리 이름이 곧 명령어 이름**이 됩니다.
+
+```bash
+mkdir -p ~/.claude/skills/summarize-changes
+```
+
+`~/.claude/skills/summarize-changes/SKILL.md`:
+
+```yaml
+---
+description: Summarizes uncommitted changes and flags anything risky. Use when the user asks what changed, wants a commit message, or asks to review their diff.
+---
+
+## Current changes
+
+!`git diff HEAD`
+
+## Instructions
+
+위 변경을 2~3개 불릿으로 요약하고, 누락된 에러 처리·하드코딩·수정 필요한 테스트 등 위험을 나열하세요. diff가 비어 있으면 커밋되지 않은 변경이 없다고 답하세요.
+```
+
+- 자동 호출: "What did I change?"처럼 `description`과 맞는 요청 → Claude가 알아서 로드
+- 직접 호출: `/summarize-changes`
+- `` !`git diff HEAD` `` 는 **동적 컨텍스트 주입** — skill이 Claude에 도달하기 전에 명령을 실행해 출력으로 치환
+
+### 저장 위치 (범위)
+
+| 위치 | 경로 | 적용 대상 |
+| --- | --- | --- |
+| Enterprise | 관리 설정 | 조직 전체 |
+| Personal | `~/.claude/skills/<name>/SKILL.md` | 모든 프로젝트 |
+| Project | `.claude/skills/<name>/SKILL.md` | 이 프로젝트만 (git 커밋 → 팀 공유) |
+| Plugin | `<plugin>/skills/<name>/SKILL.md` | 플러그인 활성 위치 |
+
+> 같은 이름이면 Enterprise > Personal > Project 순으로 우선. skill과 command가 같은 이름이면 skill이 우선.
+
+### 주요 frontmatter 필드
+
+| 필드 | 설명 |
+| --- | --- |
+| `description` | (권장) 무엇을 하는지·언제 쓰는지. **자동 로드 판단 근거** |
+| `disable-model-invocation` | `true`면 **사용자만 호출**(Claude 자동 실행 방지). `/deploy`·`/commit`처럼 부작용 있는 워크플로우용 |
+| `user-invocable` | `false`면 **Claude만 호출**(`/` 메뉴에서 숨김). 배경 지식용 |
+| `allowed-tools` | skill 활성 시 승인 없이 쓸 도구 (예: `Bash(git add *)`) |
+| `argument-hint` / `arguments` | 인수 힌트·명명 인수 |
+| `context: fork` | 격리된 서브에이전트에서 실행 (`agent`로 유형 지정) |
+| `paths` | glob 패턴 일치 파일 작업 시에만 자동 로드 |
+
+### 인수·지원 파일
+
+- **인수**: `$ARGUMENTS`(전체), `$ARGUMENTS[N]`/`$N`(위치별). 예: `/fix-issue 123` → `Fix GitHub issue 123 ...`
+- **지원 파일**: 디렉토리에 `reference.md`, `examples.md`, `scripts/helper.py` 등을 두고 `SKILL.md`에서 참조 → 필요할 때만 로드. `SKILL.md`는 500줄 이하로 유지
+
+### 모범 사례
+
+- **`description`에 사용자가 자연스럽게 쓸 키워드**를 넣어 자동 트리거 정확도↑
+- **본문은 간결하게** — 로드되면 턴 내내 컨텍스트에 남아 토큰을 소비. "왜"보다 "무엇을 할지"
+- 부작용 있는 작업(`/deploy`)은 `disable-model-invocation: true`
+- 관리 명령: **`/skills`**(목록·가시성 제어), **`/reload-skills`**(변경 즉시 반영)
+
+### 참고 링크
+
+- [Claude를 skills로 확장하기 — 공식 문서(한국어)](https://code.claude.com/docs/ko/skills)
+
+---
+
+## 권한 모드 (Permission Modes)
+
+**권한 모드**는 Claude가 파일 편집·명령 실행·네트워크 요청 전에 **얼마나 자주 승인을 요청하는지**를 제어합니다. 편의성과 감시(통제) 사이의 트레이드오프를 정합니다.
+
+### 모드 종류
+
+| 모드 | 요청 없이 실행되는 작업 | 최적 사용 |
+| --- | --- | --- |
+| `default` (Manual) | **읽기만** | 시작·민감한 작업 |
+| `acceptEdits` | 읽기 + 파일 편집 + 일반 파일시스템 명령(`mkdir`,`mv`,`cp`,`rm` 등) | 검토 중인 코드 반복 작업 |
+| `plan` | **읽기만** (편집 금지, 계획만 제시) | 변경 전 코드베이스 탐색 |
+| `auto` | 백그라운드 안전 분류기 검사를 거친 대부분의 작업 | 장시간 작업, 프롬프트 피로 감소 |
+| `dontAsk` | **사전 승인된 도구만** (나머지는 자동 거부) | 제한된 CI·스크립트 |
+| `bypassPermissions` | **모든 작업** (확인 건너뜀) | 격리된 컨테이너·VM 전용 |
+
+### 전환 방법 (CLI)
+
+- **세션 중**: `Shift+Tab` 으로 `default` → `acceptEdits` → `plan` 순환 (상태 표시줄에 현재 모드 표시)
+- **시작 시**: `claude --permission-mode plan`
+- **기본값 고정**: `settings.json`의 `permissions.defaultMode`
+  ```json
+  { "permissions": { "defaultMode": "acceptEdits" } }
+  ```
+- `auto`·`dontAsk`·`bypassPermissions`는 기본 순환에 없고 플래그/설정으로 활성화
+
+### 주의사항
+
+- ⚠️ **`bypassPermissions`는 프롬프트 주입·오작동 보호가 전혀 없습니다.** 인터넷 없는 격리 컨테이너/VM에서만 사용. 프롬프트만 줄이려면 **`auto` 모드**(백그라운드 안전 검사 포함)를 대신 사용
+- **보호된 경로**(`.git`, `.claude`, `.bashrc`, `.mcp.json` 등)는 `bypassPermissions`를 제외한 모든 모드에서 자동 승인되지 않음
+- **`auto` 모드**는 별도 분류기가 위험 작업(외부 유출·프로덕션 배포·force push·대량 삭제 등)을 차단. 단, 안전을 보장하진 않으니 민감 작업 검토를 대체하지 말 것 (플랜·모델·프로바이더 요구사항 있음)
+- 모드 위에 **권한 규칙(allow/ask/deny)** 을 계층화해 특정 도구를 사전 승인/차단 가능
+
+### 참고 링크
+
+- [권한 모드 선택 — 공식 문서(한국어)](https://code.claude.com/docs/ko/permission-modes) · [권한 규칙](https://code.claude.com/docs/ko/permissions)
+
+---
+
+## Plan Mode (계획 모드)
+
+**Plan Mode(계획 모드)** 는 Claude가 **코드를 변경하지 않고, 먼저 조사·분석해 계획만 제시**하도록 하는 모드입니다. 파일을 읽고 명령으로 탐색한 뒤 계획을 세우지만, **소스 편집은 계획을 승인할 때까지 차단**됩니다.
+
+> "바로 고치지 말고 먼저 어떻게 할지 보여줘"가 필요할 때 — 큰 변경, 리스크 높은 리팩터, 낯선 코드베이스에 이상적입니다.
+
+### 진입·종료
+
+- **진입**: `Shift+Tab`으로 순환하거나, 단일 프롬프트 앞에 `/plan` 붙이기, 또는 `claude --permission-mode plan`
+- **종료(미승인)**: `Shift+Tab`을 다시 눌러 계획 모드 해제
+- **기본값 고정**: `settings.json`의 `permissions.defaultMode: "plan"`
+
+### 계획 검토·승인
+
+계획이 준비되면 Claude가 제시하고 진행 방법을 묻습니다:
+
+- **자동 모드로 승인·시작** / **편집 승인·수락** / **각 편집 수동 검토** / **피드백 주고 계획 계속** / **Ultraplan(브라우저 검토)로 개선**
+- 승인하면 계획 모드가 끝나고 선택한 권한 모드로 전환되어 편집을 시작
+- `Ctrl+G` — 제안된 계획을 텍스트 편집기에서 직접 수정
+- 계획 수락 시 계획 내용으로 세션 이름이 자동 지정됨
+
+### 참고 링크
+
+- [편집 전에 계획 모드로 분석하기 — 공식 문서(한국어)](https://code.claude.com/docs/ko/permission-modes#analyze-before-you-edit-with-plan-mode)
+
+---
+
+## Slash Commands (슬래시 명령어)
+
+Claude Code 실행 중 **`/`로 시작하는 명령어**로 세션 관리·설정·리뷰 등을 수행합니다. 기본 제공 명령어와 사용자 정의 명령어(= Skills)가 있습니다.
+
+### 자주 쓰는 기본 제공 명령어
+
+**세션·프로젝트**
+
+| 명령어 | 기능 |
+| --- | --- |
+| `/help` | 도움말·명령어 목록 |
+| `/clear` | 빈 컨텍스트로 새 대화 (메모리는 유지) |
+| `/resume` | 이전 대화 재개 / 세션 선택 |
+| `/init` | `CLAUDE.md` 생성 |
+| `/memory` | CLAUDE.md·auto-memory 편집/토글 |
+| `/add-dir` | 작업 디렉토리 추가 |
+
+**모델·설정·상태**
+
+| 명령어 | 기능 |
+| --- | --- |
+| `/model` | AI 모델 전환 |
+| `/config` | 설정 인터페이스 |
+| `/status` | 버전·모델·계정·프로바이더·연결 확인 |
+| `/permissions` | 도구 권한 규칙(허용/요청/거부) 관리 |
+| `/mcp` | MCP 서버 연결·OAuth 인증 관리 |
+| `/hooks` | 등록된 hook 확인 |
+| `/doctor` | 설치·설정 진단 및 정리 |
+
+**리뷰·컨텍스트·워크플로우**
+
+| 명령어 | 기능 |
+| --- | --- |
+| `/code-review` | diff의 정확성 버그 검토 (`--fix`로 수정 적용) |
+| `/security-review` | 보안 취약점 분석 |
+| `/diff` | 커밋되지 않은 변경 표시 |
+| `/context` | 컨텍스트 사용량 시각화 |
+| `/compact` | 대화 요약해 컨텍스트 확보 |
+| `/plan` | 계획 모드 진입 |
+| `/agents` | 서브에이전트 생성·관리 |
+| `/skills` | skill 목록·가시성 제어 |
+| `/rewind` | 대화/코드를 이전 지점으로 되감기 |
+
+### 사용자 정의 명령어 만들기
+
+사용자 정의 슬래시 명령어는 **[Skills](#skills-만들기)로 생성**합니다. `.claude/skills/<name>/SKILL.md`(또는 기존 `.claude/commands/<name>.md`)를 만들면 **`/<name>`** 으로 호출됩니다.
+
+- **인수 전달**: `/fix-issue 123` → skill 내 `$ARGUMENTS`가 `123`으로 치환
+- **명령어 스택**: `/code-review /fix-issue 123`처럼 여러 skill을 한 번에(최대 6개) 호출 (v2.1.199+)
+- **부작용 있는 명령**(`/deploy` 등)은 `disable-model-invocation: true`로 사용자 전용 지정
+
+> 자세한 작성법은 위 [Skills 만들기](#skills-만들기) 섹션 참조.
+
+### 참고 링크
+
+- [명령어 참조 — 공식 문서(한국어)](https://code.claude.com/docs/ko/commands)
