@@ -22,7 +22,8 @@
    - [백그라운드·원격·워크트리](#백그라운드원격워크트리)
    - [진단·기타](#진단기타)
 4. [세션 내 슬래시 명령어 (Slash Commands)](#4-세션-내-슬래시-명령어-slash-commands)
-5. [자주 쓰는 예시](#5-자주-쓰는-예시)
+5. [내장 도구 (Built-in Tools)](#5-내장-도구-built-in-tools)
+6. [자주 쓰는 예시](#6-자주-쓰는-예시)
 
 > 📚 관련 문서: 한글 자료·도서·GitHub 모음은 [`claude_code.md`](./claude_code.md), 심화 개념·팁(Plugin·MCP·Memory·Agent SDK·Subagents·Hooks·Skills·권한 모드·Plan Mode·Slash Commands 비교)은 [`claude_code_tips.md`](./claude_code_tips.md) 참고.
 
@@ -467,7 +468,113 @@ Claude Code 실행 중(대화형 세션) **`/`로 시작해 입력**하는 명�
 
 ---
 
-## 5. 자주 쓰는 예시
+## 5. 내장 도구 (Built-in Tools)
+
+Claude가 코드베이스를 이해·수정하기 위해 쓰는 기본 기능들입니다. 여기 나오는 **도구 이름은 권한 규칙·서브에이전트 `tools`·hook matcher에서 쓰는 정확한 문자열**이며, `permissions.deny`에 넣으면 비활성화됩니다. (`--tools`로 내장 도구 집합 제한, `--allowedTools`/`--disallowedTools`로 개별 제어)
+
+> "권한 필요"는 **작업 디렉토리 내** 기준입니다. `Read`/`Grep`/`Glob`은 작업 디렉토리 밖 경로엔 여전히 프롬프트를 띄우고, `Bash`는 내장 **읽기 전용 명령**은 프롬프트 없이 실행합니다.
+
+### 파일 조작
+
+| 도구 | 하는 일 | 권한 |
+| --- | --- | --- |
+| `Read` | 파일 읽기 (라인 번호 포함) | ❌ |
+| `Write` | 파일 생성/덮어쓰기 (전체 교체) | ✅ |
+| `Edit` | 정확한 문자열 치환 편집 | ✅ |
+| `NotebookEdit` | Jupyter 노트북 셀 수정 | ✅ |
+
+- **Read**: 이미지(PNG/JPG 등)를 시각적으로 봄(큰 이미지 자동 리사이즈), PDF(10p 초과 시 `pages` 범위·한 번에 20p), Jupyter 셀+출력. 토큰 초과 시 `PARTIAL view`로 첫 페이지만(`offset`/`limit`으로 더). 디렉토리는 못 읽음(→ Bash `ls`)
+- **Edit**: **정규식·퍼지 없음**. `old_string`이 파일에 **정확히**(공백까지) + **딱 한 번** 나타나야 함(여러 번이면 `replace_all: true`). **편집 전 파일 읽기 필요**
+- **Write**: 추가·병합 안 함(전체 교체). 기존 파일은 먼저 읽어야 덮어쓰기 가능. 부분 변경은 Edit 사용
+
+### 검색·탐색
+
+| 도구 | 하는 일 | 권한 |
+| --- | --- | --- |
+| `Glob` | 이름 패턴으로 파일 찾기 (`**/*.js`) | ❌ |
+| `Grep` | 파일 내용 패턴 검색 (ripgrep 기반) | ❌ |
+| `LSP` | 코드 인텔리전스(정의 이동·참조·타입 오류) | ❌ |
+
+- **Glob**: 수정 시간순, 100개 제한, **기본적으로 `.gitignore` 무시 안 함**(추적 안 된 파일도 찾음)
+- **Grep**: **ripgrep 정규식** 문법(`interface\{\}`처럼 이스케이프), 출력 모드 `files_with_matches`(기본)/`content`/`count`, **`.gitignore` 존중**(무시 파일 건너뜀)
+
+### 실행
+
+| 도구 | 하는 일 | 권한 |
+| --- | --- | --- |
+| `Bash` | 셸 명령 실행 | ✅ |
+| `PowerShell` | PowerShell 명령 실행 | ✅ |
+| `Monitor` | 백그라운드 명령 실행 + 출력 실시간 스트리밍 | ✅ |
+
+- **Bash**: 명령마다 별도 프로세스 → **환경변수 미지속**(`export`가 다음 명령에 안 남음), `cd`는 프로젝트 디렉토리 내에서 이월. 타임아웃 기본 2분(최대 10분), 출력 기본 30,000자(초과 시 파일 저장). **백그라운드 실행** `run_in_background: true`(dev 서버·watch 빌드) → `/tasks`로 관리. `~/.bashrc`·`~/.zshrc` 별칭/함수 사용 가능
+
+### 웹
+
+| 도구 | 하는 일 | 권한 |
+| --- | --- | --- |
+| `WebFetch` | URL 콘텐츠 가져와 프롬프트로 추출 | ✅ |
+| `WebSearch` | 웹 검색 (제목·URL만) | ✅ |
+
+- **WebFetch**: Markdown 변환 후 **작은 모델이 요약** → **설계상 손실적**(원본 아님). HTTP→HTTPS 자동 승격, 15분 캐시, **크로스 호스트 리다이렉트 안 따라감**. 새 도메인 첫 접근 시 프롬프트, `WebFetch(domain:example.com)`로 사전 허용
+- **WebSearch**: 결과 페이지는 안 가져옴(→ WebFetch 후속), `allowed_domains`/`blocked_domains`로 범위 지정
+
+### 에이전트·작업·워크플로우
+
+| 도구 | 하는 일 | 권한 |
+| --- | --- | --- |
+| `Agent` (구 `Task`) | 서브에이전트를 별도 컨텍스트에서 생성 | — |
+| `Skill` | 주 대화에서 skill 실행 | ✅ |
+| `Workflow` | 동적 워크플로우(다수 서브에이전트 조율) | ✅ |
+| `SendMessage` | 팀원 메시지 / 서브에이전트 재개 | ❌ |
+| `TaskCreate`·`TaskGet`·`TaskList`·`TaskUpdate` | 작업 목록 관리 | ❌ |
+| `TaskOutput`·`TaskStop` | 백그라운드 작업 출력/중지 | ❌ |
+| `TodoWrite` | 체크리스트(v2.1.142부터 기본 비활성, Task 도구 선호) | ❌ |
+
+### 모드·워크트리·플랜
+
+| 도구 | 하는 일 | 권한 |
+| --- | --- | --- |
+| `EnterPlanMode` / `ExitPlanMode` | 계획 모드 진입/종료 | 진입 ❌ / 종료 ✅ |
+| `EnterWorktree` / `ExitWorktree` | git worktree 생성·전환/종료 | ✅ / ❌ |
+
+### 스케줄·알림·MCP·기타
+
+| 도구 | 하는 일 | 권한 |
+| --- | --- | --- |
+| `CronCreate`·`CronList`·`CronDelete` | 세션 스코프 예약 작업 | ❌ |
+| `ScheduleWakeup` | 자기 속도 `/loop` 다음 반복 예약 | ❌ |
+| `RemoteTrigger` | claude.ai Routines 생성·실행 (`/schedule`) | ❌ |
+| `PushNotification` | 데스크톱/폰 푸시 알림 | ❌ |
+| `SendUserFile` | 생성한 파일을 사용자에게 전송 | ❌ |
+| `ReportFindings` | 코드 리뷰 결과 구조화 보고 | ❌ |
+| `ToolSearch`·`WaitForMcpServers` | 지연 도구 검색 / MCP 서버 대기 | ❌ |
+| `ListMcpResourcesTool`·`ReadMcpResourceTool` | MCP 서버 리소스 나열·읽기 | ❌ |
+
+### 권한 규칙 형식
+
+도구를 제어할 때 `ToolName(specifier)` 형식을 씁니다.
+
+| 규칙 형식 | 적용 도구 |
+| --- | --- |
+| `Bash(npm run *)` | Bash, Monitor |
+| `PowerShell(Get-ChildItem *)` | PowerShell |
+| `Read(~/secrets/**)` | Read, Grep, Glob, LSP |
+| `Edit(/src/**)` | Edit, Write, NotebookEdit |
+| `WebFetch(domain:example.com)` | WebFetch |
+| `Agent(Explore)` | Agent |
+| `Skill(deploy *)` | Skill |
+| `WebSearch` | WebSearch (specifier 없음) |
+
+> 💡 `Edit(...)` allow 규칙은 같은 경로 읽기도 허용. `Read(...)` deny 규칙은 편집도 차단(편집엔 재읽기가 필요하므로).
+> 확인·관리: 세션 내 `/permissions`, MCP 서버로 새 도구 추가, skill의 `allowed-tools`·서브에이전트 `tools` frontmatter.
+
+### 참고 링크
+
+- [도구 참조 — 공식 문서(한국어)](https://code.claude.com/docs/ko/tools-reference)
+
+---
+
+## 6. 자주 쓰는 예시
 
 ```bash
 # 일회성 질의 후 종료
