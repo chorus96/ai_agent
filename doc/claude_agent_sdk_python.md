@@ -24,14 +24,72 @@
 
 ## 1. 설치
 
+### 방법 A — pip 설치 (일반 사용)
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install claude-agent-sdk
 ```
 
+- **요구사항**: Python **3.10+**
+- **Claude Code CLI**: 패키지가 **자동으로 번들**하므로 별도 설치 불필요
 - Python 라이브러리 (MIT 라이선스). 비동기(`asyncio`) 기반
-- 로컬에 Claude Code CLI가 필요할 수 있음(엔진). 인증은 API 키·사내 게이트웨이·Bedrock/Vertex/Foundry 모두 가능([11장](#11-인증-사내-llm-포함))
+- 인증은 API 키·사내 게이트웨이·Bedrock/Vertex/Foundry 모두 가능([11장](#11-인증-사내-llm-포함))
+
+### 방법 B — 저장소 clone 후 개발 (예제 실행·소스 참조·기여)
+
+공식 저장소를 직접 clone하면 **예제 코드를 바로 실행**하고 소스를 참조하며 개발할 수 있습니다.
+
+```bash
+# 1) 저장소 clone
+git clone https://github.com/anthropics/claude-agent-sdk-python.git
+cd claude-agent-sdk-python
+
+# 2) 가상환경 생성·활성화
+python3 -m venv .venv
+source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
+
+# 3) 편집 가능(editable) 설치 — 소스 수정이 바로 반영됨
+pip install -e .
+```
+
+**포함된 예제 실행** (`examples/` 디렉토리):
+
+```bash
+python examples/quick_start.py          # 기본 query() 예제
+python examples/streaming_mode.py       # 스트리밍/다중 턴
+python examples/mcp_calculator.py       # 커스텀 도구(@tool) + MCP 서버
+
+# IPython 대화형 탐색
+ipython -i examples/streaming_mode_ipython.py
+```
+
+**내 스크립트로 시작하기** — clone 없이도 되지만, 저장소 안에서 바로 짜볼 수 있습니다:
+
+```python
+# my_agent.py
+import anyio
+from claude_agent_sdk import query
+
+async def main():
+    async for message in query(prompt="What is 2 + 2?"):
+        print(message)
+
+anyio.run(main)
+```
+
+```bash
+python my_agent.py
+```
+
+> 💡 예제는 `anyio.run(main)`을, 이 문서 다른 예제는 `asyncio.run(main())`을 씁니다 — 둘 다 async 진입점을 실행하는 방법이며 동작은 같습니다.
+
+**기여자용 개발 설정** (선택): 저장소에는 CI와 동일한 lint를 걸어주는 git 훅 설정 스크립트가 있습니다.
+
+```bash
+./scripts/initial-setup.sh    # pre-push lint 훅 설치 (임시 우회: git push --no-verify)
+```
 
 ---
 
