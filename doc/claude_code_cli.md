@@ -9,6 +9,7 @@
 ## 목차
 
 1. [기본 사용 형태](#1-기본-사용-형태)
+   - [`claude -p "query"` 상세 (인쇄/헤드리스 모드)](#claude--p-query-상세-인쇄헤드리스-모드)
 2. [CLI 명령어(하위 명령)](#2-cli-명령어하위-명령)
 3. [CLI 플래그](#3-cli-플래그)
    - [세션 시작·재개](#세션-시작재개)
@@ -38,6 +39,111 @@
 | `claude -r "<session>" "query"` | ID 또는 이름으로 세션 재개 | `claude -r "auth-refactor" "Finish this PR"` |
 
 > 하위 명령을 잘못 입력하면 가장 가까운 일치를 제안하고 세션을 시작하지 않습니다 (예: `claude udpate` → `Did you mean claude update?`).
+
+### `claude -p "query"` 상세 (인쇄/헤드리스 모드)
+
+`-p`(또는 `--print`)는 **대화형 UI 없이 한 번 실행하고 결과를 출력한 뒤 종료**하는 모드입니다. 스크립트·CI·파이프라인처럼 사람이 지켜보지 않는 자동화에 씁니다. 내부적으로는 **Agent SDK와 동일한 엔진**을 CLI로 구동하는 것입니다.
+
+```bash
+claude -p "auth 모듈이 하는 일 설명해줘"
+```
+
+#### 동작 방식·특징
+
+- **일회성 실행**: 프롬프트를 처리해 응답을 stdout으로 출력하고 종료. 세션은 기본적으로 디스크에 저장되어 이어갈 수 있음(`-c`/`--resume`)
+- **컨텍스트 로드**: 기본적으로 대화형 세션과 **동일한 컨텍스트**(CLAUDE.md·skills·hooks·MCP·자동 메모리)를 로드. CI에서 머신마다 동일한 결과가 필요하면 `--bare`로 이를 모두 건너뜀
+- **모든 CLI 플래그가 `-p`와 함께 작동** (`--model`, `--allowedTools`, `--output-format`, `--append-system-prompt` 등)
+- 일부 플래그는 **`-p` 전용**: `--max-turns`, `--max-budget-usd`, `--json-schema`, `--output-format`, `--input-format`, `--include-partial-messages` 등
+
+#### stdin 파이프 입력
+
+다른 CLI 도구처럼 데이터를 파이프하고 출력을 리디렉션할 수 있습니다.
+
+```bash
+# 빌드 로그를 넣어 원인 분석 후 파일로 저장
+cat build-error.txt | claude -p '이 빌드 에러의 근본 원인을 간결히 설명' > output.txt
+
+# git diff를 넣어 오타 린트
+git diff main | claude -p "너는 오타 린터야. diff의 각 오타를 filename:line 형식으로 보고해"
+```
+
+> ⚠️ 파이프된 stdin은 **10MB 제한**(v2.1.128+). 초과 시 오류로 종료됩니다. 큰 입력은 파일로 쓰고 프롬프트에서 **파일 경로를 참조**하세요.
+
+#### 출력 형식 (`--output-format`)
+
+| 값 | 설명 | 주요 필드 |
+| --- | --- | --- |
+| `text` (기본) | 일반 텍스트 응답 | — |
+| `json` | 결과·세션ID·메타데이터·비용을 담은 구조화 JSON | `result`, `session_id`, `total_cost_usd` |
+| `stream-json` | 줄 구분 JSON 실시간 스트리밍 | 이벤트별 객체, 마지막 줄이 `result` |
+
+```bash
+# JSON 출력 후 jq로 텍스트만 추출
+claude -p "이 프로젝트 요약" --output-format json | jq -r '.result'
+
+# 스키마에 맞는 구조화 출력 (structured_output 필드에 담김)
+claude -p "auth.py의 주요 함수명 추출" --output-format json \
+  --json-schema '{"type":"object","properties":{"functions":{"type":"array","items":{"type":"string"}}},"required":["functions"]}' \
+  | jq '.structured_output'
+
+# 토큰 스트리밍 (verbose + partial 필요)
+claude -p "재귀 설명" --output-format stream-json --verbose --include-partial-messages
+```
+
+> `--output-format json`을 쓰면 응답에 `total_cost_usd`(호출당 비용)가 포함되어 스크립트에서 지출 추적이 쉽습니다.
+
+#### 도구·권한 제어
+
+`-p`는 사람이 승인할 수 없으므로 **사전 승인**이 중요합니다.
+
+```bash
+# 특정 도구만 승인
+claude -p "테스트 실행하고 실패 수정" --allowedTools "Bash,Read,Edit"
+
+# 권한 규칙 구문 (접두사 일치, 공백 주의)
+claude -p "스테이징 변경 검토 후 커밋" \
+  --allowedTools "Bash(git diff *),Bash(git status *),Bash(git commit *)"
+
+# 잠긴 CI: 사전 승인 외 전부 거부
+claude -p "..." --permission-mode dontAsk
+
+# 편집만 자동 승인
+claude -p "린트 수정 적용" --permission-mode acceptEdits
+```
+
+#### 세션 이어가기
+
+```bash
+claude -p "이 코드베이스 성능 이슈 검토"
+claude -p "이제 DB 쿼리에 집중" --continue          # 최근 대화 이어가기
+
+# 세션 ID를 잡아 특정 대화 재개
+sid=$(claude -p "리뷰 시작" --output-format json | jq -r '.session_id')
+claude -p "그 리뷰 계속" --resume "$sid"
+```
+
+#### 실행 제한·종료
+
+- `--max-turns N` — 에이전트 턴 수 제한 (도달 시 오류 종료)
+- `--max-budget-usd N` — 최대 소비 달러 (초과 시 중지)
+- **종료 코드**: 성공 0, 실패 시 0이 아닌 값 (스크립트에서 `$?`로 확인)
+- Claude가 백그라운드 작업(dev 서버 등)을 띄우면 stdin 종료 후 ~5초 뒤 정리, 백그라운드 서브에이전트는 최대 10분 대기
+
+#### `--bare` (권장, 스크립트용)
+
+`--bare`는 hooks·skills·plugins·MCP·자동 메모리·CLAUDE.md 자동 검색을 **모두 건너뛰어** 빠르게 시작하고, 머신 간 동일한 결과를 보장합니다. 필요한 것만 플래그로 명시적으로 전달합니다.
+
+```bash
+claude --bare -p "이 파일 요약" --allowedTools "Read"
+```
+
+> `--bare`는 OAuth·키체인도 건너뛰므로 인증은 `ANTHROPIC_API_KEY`(또는 `--settings`의 `apiKeyHelper`, 클라우드 프로바이더 자격증명)로 제공해야 합니다. 향후 `-p`의 기본값이 될 예정입니다.
+
+#### 슬래시 명령어와 `-p`
+
+- 프롬프트 문자열에 `/skill-name`을 넣으면 실행 전 확장됨 (Skills·사용자 정의 명령 사용 가능)
+- `/login`처럼 대화형 창을 여는 명령은 `-p`에서 사용 불가
+- `/model sonnet`, `/effort high` 등 값 인자를 받는 명령은 사용 가능 (v2.1.205+)
 
 ---
 
