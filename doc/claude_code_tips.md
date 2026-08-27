@@ -214,3 +214,139 @@ SDK로 만든 제품에 Claude 브랜딩은 선택 사항이며, **"Claude Agent
 - [Quickstart](https://code.claude.com/docs/en/agent-sdk/quickstart)
 - [TypeScript SDK (GitHub)](https://github.com/anthropics/claude-agent-sdk-typescript) · [Python SDK (GitHub)](https://github.com/anthropics/claude-agent-sdk-python)
 - [예제 에이전트 모음 (GitHub)](https://github.com/anthropics/claude-agent-sdk-demos)
+
+---
+
+## Subagents(서브에이전트) 활용법
+
+**서브에이전트(subagent)** 는 **특정 유형의 작업을 처리하는 특화된 AI 어시스턴트**입니다. 각 서브에이전트는 **자체 컨텍스트 윈도우**에서 실행되며, 고유한 시스템 프롬프트·도구 접근·권한을 가지고, 작업을 마치면 **요약만 주 대화로 반환**합니다.
+
+> 부작업이 검색 결과·로그·다시 참조하지 않을 파일 내용으로 **주 대화를 넘칠 때** 서브에이전트를 사용하세요.
+> 서브에이전트가 그 작업을 자기 컨텍스트에서 처리하고 요약만 돌려줍니다.
+
+### 왜 쓰는가 (핵심 장점)
+
+- **컨텍스트 보존** — 탐색·구현의 장황한 출력을 주 대화에서 분리
+- **제약 적용** — 서브에이전트가 쓸 수 있는 도구를 제한 (예: 읽기 전용)
+- **구성 재사용** — 사용자 레벨 서브에이전트로 여러 프로젝트에서 공유
+- **동작 특화** — 특정 도메인용 집중 시스템 프롬프트
+- **비용 제어** — Haiku 같은 더 빠르고 저렴한 모델로 라우팅
+
+### 내장 서브에이전트
+
+Claude가 적절할 때 자동으로 사용하는 기본 제공 에이전트가 있습니다.
+
+| 에이전트 | 도구 | 용도 |
+| --- | --- | --- |
+| **Explore** | 읽기 전용 (Write/Edit 거부) | 코드베이스 검색·분석 (빠르고 저렴) |
+| **Plan** | 읽기 전용 | plan mode에서 계획 수립용 연구 |
+| **general-purpose** | 모든 도구 | 탐색+수정이 필요한 복잡한 다단계 작업 |
+
+> `Explore`/`Plan`은 속도를 위해 CLAUDE.md·git 상태를 건너뜁니다. 그 외 모든 서브에이전트는 둘 다 로드합니다.
+
+### 만드는 방법
+
+서브에이전트는 **YAML frontmatter + Markdown 시스템 프롬프트**로 이루어진 파일입니다. Claude에게 만들어 달라고 요청하거나 직접 작성할 수 있습니다. (v2.1.198부터 `/agents`의 대화형 생성 마법사는 제거됨 — Claude에 요청하거나 `.claude/agents/`를 직접 편집)
+
+```markdown
+---
+name: code-reviewer
+description: Reviews code for quality and best practices. Use proactively after code changes.
+tools: Read, Glob, Grep
+model: sonnet
+---
+
+You are a code reviewer. When invoked, analyze the code and provide
+specific, actionable feedback on quality, security, and best practices.
+```
+
+- **본문(시스템 프롬프트)** 이 서브에이전트의 동작을 규정합니다. 서브에이전트는 전체 Claude Code 시스템 프롬프트가 아니라 **이 프롬프트만** 받습니다.
+- 파일을 추가/편집하면 Claude Code가 몇 초 내 감지해 **재시작 없이** 다음 위임부터 반영 (단, 해당 `agents` 디렉토리가 세션 시작 시 없었다면 최초 1회 재시작 필요)
+
+### 저장 위치와 범위 (우선순위 높은 순)
+
+| 위치 | 범위 | 용도 |
+| --- | --- | --- |
+| 관리되는 설정 | 조직 전체 | 관리자가 배포 (최우선) |
+| `--agents` CLI 플래그 | 현재 세션 | JSON으로 전달, 디스크 미저장 (테스트·자동화) |
+| `.claude/agents/` | 현재 프로젝트 | 팀 공유 (git 커밋) |
+| `~/.claude/agents/` | 모든 프로젝트 | 개인용 |
+| 플러그인 `agents/` | 플러그인 활성 위치 | 플러그인으로 배포 (최저) |
+
+> 같은 이름이 여러 곳에 있으면 우선순위가 높은 위치가 이깁니다. 트리 전체에서 `name`은 고유하게 유지하세요.
+
+### 주요 frontmatter 필드
+
+`name`과 `description`만 필수입니다.
+
+| 필드 | 설명 |
+| --- | --- |
+| `name` | 소문자·하이픈 고유 식별자 |
+| `description` | **언제 이 서브에이전트에 위임할지** (자동 위임 판단 근거) |
+| `tools` | 사용 허용 도구 (허용 목록). 생략 시 전체 상속 |
+| `disallowedTools` | 거부할 도구 (거부 목록). `tools`보다 먼저 적용 |
+| `model` | `sonnet`/`opus`/`haiku`/`fable`/전체 ID/`inherit` (기본: `inherit`) |
+| `permissionMode` | `default`/`acceptEdits`/`auto`/`dontAsk`/`bypassPermissions`/`plan` |
+| `skills` | 시작 시 컨텍스트에 미리 로드할 Skills |
+| `mcpServers` | 이 서브에이전트에서 쓸 MCP 서버 |
+| `hooks` | 이 서브에이전트로 범위 지정된 라이프사이클 hooks |
+| `memory` | 지속 메모리 범위 (`user`/`project`/`local`) — 교차 세션 학습 |
+| `isolation` | `worktree` 지정 시 격리된 git worktree에서 실행 |
+| `background` | `true`면 항상 백그라운드 실행 (v2.1.198부터 기본 백그라운드) |
+
+> ⚠️ 보안상 **플러그인 서브에이전트**에서는 `hooks`·`mcpServers`·`permissionMode`가 무시됩니다.
+
+### 호출 방법
+
+**1) 자동 위임** — Claude가 작업 내용과 서브에이전트의 `description`을 보고 알아서 위임합니다. 적극 위임을 유도하려면 description에 **"use proactively"** 를 넣으세요.
+
+**2) 명시적 호출** — 자동 위임이 부족할 때:
+
+```text
+# 자연어로 이름 지정 (Claude가 위임 결정)
+Use the test-runner subagent to fix failing tests
+
+# @-mention (특정 서브에이전트 실행 보장)
+@agent-code-reviewer look at the auth changes
+```
+
+**3) 세션 전체를 서브에이전트로** — 주 스레드 자체가 해당 시스템 프롬프트·도구·모델을 사용:
+
+```bash
+claude --agent code-reviewer
+```
+
+프로젝트 기본값으로 만들려면 `.claude/settings.json`에 `{"agent": "code-reviewer"}`.
+
+### 실전 활용 패턴
+
+- **대량 출력 격리** — 테스트 실행·로그 처리 등 컨텍스트를 많이 먹는 작업을 위임하고 요약만 회수
+  > `Use a subagent to run the test suite and report only the failing tests with their error messages`
+- **병렬 연구** — 서로 독립적인 조사를 여러 서브에이전트로 동시 진행 후 Claude가 종합
+  > `Research the authentication, database, and API modules in parallel using separate subagents`
+- **서브에이전트 체인** — 다단계 워크플로우를 순차 위임
+  > `Use the code-reviewer subagent to find performance issues, then use the optimizer subagent to fix them`
+- **중첩 서브에이전트** — 서브에이전트가 다시 자신의 서브에이전트를 생성 (v2.1.172+), 중간 출력은 주 대화에 도달하지 않음
+
+### 서브에이전트 vs 주 대화 — 언제 무엇을?
+
+| 주 대화가 적합 | 서브에이전트가 적합 |
+| --- | --- |
+| 잦은 왕복·반복 개선이 필요 | 주 컨텍스트에 불필요한 대량 출력 발생 |
+| 여러 단계가 컨텍스트를 공유(계획→구현→테스트) | 특정 도구 제한·권한을 적용하고 싶음 |
+| 빠르고 대상이 명확한 변경 | 작업이 자체 완결적이고 요약 반환 가능 |
+| 지연시간이 중요 (서브에이전트는 시동 시간 필요) | — |
+
+> 주 대화 컨텍스트에서 도는 **재사용 프롬프트/워크플로우**가 필요하면 서브에이전트보다 **Skills**를, 지속적 병렬성이 필요하면 **agent teams**를 고려하세요.
+
+### 모범 사례
+
+- `description`을 **구체적으로** 작성 — 자동 위임 정확도를 좌우 (필요 시 "use proactively" 포함)
+- **최소 권한** — 읽기 전용 작업이면 `tools: Read, Grep, Glob`로 제한
+- **모델 라우팅** — 단순·대량 작업은 `haiku`, 정교한 분석은 `sonnet`/`opus`
+- 팀 공유는 `.claude/agents/`에 커밋, 개인용은 `~/.claude/agents/`
+- 하나의 서브에이전트는 **하나의 역할**에 집중시키기 (코드리뷰어, 디버거, 테스트러너 등)
+
+### 참고 링크
+
+- [사용자 정의 subagent 만들기 — 공식 문서(한국어)](https://code.claude.com/docs/ko/sub-agents)
