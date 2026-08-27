@@ -17,6 +17,8 @@
 10. [Slash Commands vs Skill 비교](#slash-commands-vs-skill-비교)
 11. [Checkpoints & Rewind (체크포인트·되감기)](#checkpoints--rewind-체크포인트되감기)
 
+> 📚 관련 문서: 한글 자료·도서·GitHub 모음은 [`claude_code.md`](./claude_code.md), CLI 명령어·플래그·슬래시 명령어 레퍼런스는 [`claude_code_cli.md`](./claude_code_cli.md) 참고.
+
 ---
 
 ## Plugin vs MCP 비교
