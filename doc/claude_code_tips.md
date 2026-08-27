@@ -18,6 +18,8 @@
 10. [Slash Commands vs Skill 비교](#slash-commands-vs-skill-비교)
 11. [Checkpoints & Rewind (체크포인트·되감기)](#checkpoints--rewind-체크포인트되감기)
 12. [Worktree vs Checkpoint](#worktree-vs-checkpoint)
+13. [Routines (스케줄된 작업)](#routines-스케줄된-작업)
+14. [Code Review (코드 리뷰)](#code-review-코드-리뷰)
 
 > 📚 관련 문서: 한글 자료·도서·GitHub 모음은 [`claude_code.md`](./claude_code.md), CLI 명령어·플래그·슬래시 명령어 레퍼런스는 [`claude_code_cli.md`](./claude_code_cli.md) 참고.
 
@@ -1013,3 +1015,121 @@ description: API design patterns for this codebase
 ### 참고 링크
 
 - [worktree로 병렬 세션 실행 — 공식 문서(한국어)](https://code.claude.com/docs/ko/worktrees) · [Checkpointing](https://code.claude.com/docs/ko/checkpointing)
+
+---
+
+## Routines (스케줄된 작업)
+
+**Claude가 일정에 따라 프롬프트를 자동 반복 실행**하게 하는 기능입니다. 배포 폴링, PR 감시, 야간 CI 확인, 정기 종속성 감사 등에 씁니다. 스케줄링 방법이 **3가지**로 나뉘며, 좁은 의미의 "Routines"는 그중 **클라우드(Anthropic 관리) 방식**을 가리킵니다.
+
+### 3가지 스케줄링 옵션 비교
+
+| | **Routines (클라우드)** | **Desktop 예약 작업** | **`/loop` (세션)** |
+| --- | --- | --- | --- |
+| 실행 위치 | Anthropic 관리 인프라 | 내 컴퓨터(데스크톱 앱) | 내 컴퓨터(현재 CLI 세션) |
+| 컴퓨터 켜둬야? | ❌ 아니오 | ✅ 예 | ✅ 예 |
+| 세션 열려 있어야? | ❌ 아니오 | ❌ 아니오 | ✅ 예 |
+| 재시작 후 지속 | ✅ | ✅ | `--resume` 시 복원 |
+| 로컬 파일 접근 | ❌ (fresh clone) | ✅ | ✅ |
+| 권한 프롬프트 | ❌ (자율 실행) | 작업별 설정 | 세션 상속 |
+| 최소 간격 | **1시간** | 1분 | 1분 |
+
+> **선택 기준**: 컴퓨터 없이도 안정적으로 → **Routines(클라우드)**, 로컬 파일·도구 필요 → **Desktop**, 세션 중 빠른 폴링 → **`/loop`**
+
+### Routines (클라우드) 설정
+
+- CLI에서 **`/schedule`**(별칭 `/routines`)로 생성·관리, 또는 [claude.ai/code/routines](https://claude.ai/code/routines)에서 구성
+- **API 호출·GitHub 이벤트**로도 트리거 가능
+- 매번 **새 클론**에서 자율 실행되므로, 프롬프트에 **"성공이 무엇인지·결과를 어떻게 처리할지"를 명시**해야 함
+  > 예: "`needs-review` 라벨 PR을 검토하고, 이슈에 인라인 코멘트를 달고, `#eng-reviews` Slack에 요약을 올려줘"
+
+### `/loop` (세션 스코프 — 가볍게 쓰기)
+
+```text
+/loop 5m check if the deployment finished     # 5분마다 (고정 간격)
+/loop check whether CI passed                 # Claude가 간격 자동 선택(1분~1시간)
+/loop                                         # 내장 유지보수 프롬프트(또는 loop.md)
+/loop 20m /review-pr 1234                      # 스킬을 반복 실행
+```
+
+- 간격 단위: `s`/`m`/`h`/`d`, 내부적으로 cron으로 변환 (1분 단위)
+- **중지**: 대기 중 `Esc`. 자기 속도 모드에선 Claude가 완료 시 종료
+- **7일 만료**, 세션당 최대 50개, 새 대화 시작 시 초기화(`--resume`으로 복원)
+- 내부 도구: `CronCreate`/`CronList`/`CronDelete` (자연어로 "예약 작업 뭐 있어?", "deploy 체크 작업 취소해줘")
+- `loop.md`(`.claude/loop.md` 또는 `~/.claude/loop.md`)로 인자 없는 `/loop`의 기본 프롬프트 커스터마이즈
+
+### 일회성 알림
+
+```text
+remind me at 3pm to push the release branch
+in 45 minutes, check whether the integration tests passed
+```
+
+### cron 표현식 (5필드: 분 시 일 월 요일)
+
+| 예시 | 의미 |
+| --- | --- |
+| `*/5 * * * *` | 5분마다 |
+| `0 * * * *` | 매시간 정각 |
+| `0 9 * * 1-5` | 평일 오전 9시(현지 시간) |
+
+> 모든 시간은 **현지 시간대**로 해석. `CLAUDE_CODE_DISABLE_CRON=1`로 스케줄러 전체 비활성화 가능.
+
+### 무인 자동화 (세션 없이)
+
+- **[Routines](https://code.claude.com/docs/ko/routines)** — Anthropic 관리 인프라
+- **GitHub Actions** — CI의 `schedule` 트리거
+- **Desktop 예약 작업** — 로컬 실행
+
+### 참고 링크
+
+- [일정에 따라 프롬프트 실행하기 — 공식 문서(한국어)](https://code.claude.com/docs/ko/scheduled-tasks) · [Routines(클라우드)](https://code.claude.com/docs/ko/routines)
+
+---
+
+## Code Review (코드 리뷰)
+
+Claude Code는 여러 층위의 코드 리뷰 도구를 제공합니다. 크게 **번들 스킬 3종 + PR 워크플로우**로 나뉩니다.
+
+### 리뷰 명령어 비교
+
+| 명령어 | 무엇을 보나 | 특징 |
+| --- | --- | --- |
+| **`/code-review`** | diff의 **정확성 버그 + 정리 + 효율성** | `[level] [--fix] [--comment] [target]` |
+| **`/simplify`** | **정리·간결화만** (버그 검사 X) | 재사용·단순화·효율성 개선 후 적용 |
+| **`/security-review`** | **보안 취약점** | 보류 중인 변경 분석 |
+| **`/review`** | **PR 빠른 단일 패스** 읽기 전용 검토 | `[PR]` |
+
+### `/code-review` 상세
+
+```text
+/code-review                    # 현재 diff 검토
+/code-review high               # 노력 수준 지정 (low/medium: 적고 확실 / high~max: 넓게)
+/code-review --fix              # 발견사항을 워킹 트리에 바로 적용
+/code-review --comment          # PR에 인라인 코멘트로 게시
+/code-review 1234               # PR 번호/브랜치/경로 대상 지정
+```
+
+- **레벨이 리뷰 강도를 결정**: low/medium은 고확신 소수 findings, high→max는 넓은 커버리지(불확실 항목 포함)
+- 레벨을 안 주면 **직전에 쓴 레벨을 재사용**
+
+### 세 리뷰의 역할 분담
+
+| 목적 | 명령어 |
+| --- | --- |
+| 버그를 찾고 싶다 | **`/code-review`** |
+| 코드를 깔끔하게만 (버그 아님) | **`/simplify`** |
+| 보안 점검 | **`/security-review`** |
+
+### PR 리뷰 워크플로우
+
+1. **PR 생성**: "create a pr for my changes" → `gh pr create`로 만들면 세션이 PR에 **자동 연결** (`claude --from-pr 123`으로 재개)
+2. **리뷰**: `/review 123` 또는 `/code-review --comment 123`
+3. **자동 수정·감시**: `/autofix-pr`로 CI 실패·리뷰 코멘트를 감시하며 자동 수정하는 세션 생성
+4. **CI에서 자동 리뷰**: GitHub Actions([`claude-code-action`](https://github.com/anthropics/claude-code-action)) 또는 [`claude-code-security-review`](https://github.com/anthropics/claude-code-security-review) Action으로 PR마다 자동 리뷰
+
+> 💡 제출 전 Claude가 만든 PR을 검토하고, "잠재적 위험·고려사항을 강조해줘"라고 요청하는 것이 좋습니다.
+
+### 참고 링크
+
+- [일반적인 워크플로우(코드 리뷰·PR) — 공식 문서(한국어)](https://code.claude.com/docs/ko/common-workflows) · [code-review 스킬](https://code.claude.com/docs/ko/commands)
