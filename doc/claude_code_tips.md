@@ -350,3 +350,139 @@ claude --agent code-reviewer
 ### 참고 링크
 
 - [사용자 정의 subagent 만들기 — 공식 문서(한국어)](https://code.claude.com/docs/ko/sub-agents)
+
+---
+
+## Hooks(훅) 실전 활용
+
+**Hooks(훅)** 는 **Claude Code 라이프사이클의 특정 지점에서 자동 실행되는 셸 명령**입니다. LLM이 "실행하기로 선택하는 것"에 의존하지 않고, **특정 작업이 항상 일어나도록 결정론적으로 보장**하는 것이 핵심입니다.
+
+> 예: "편집 후 항상 포맷팅", "커밋 전 항상 테스트", "민감 파일은 절대 수정 금지", "입력 대기 시 데스크톱 알림".
+> 이런 **강제**는 CLAUDE.md(권고)로는 안 되고 Hooks로 해야 합니다.
+
+### 주요 이벤트
+
+| 이벤트 | 발생 시점 | 차단 가능 |
+| --- | --- | --- |
+| `SessionStart` | 세션 시작/재개 시 (matcher `compact`로 압축 후) | — |
+| `UserPromptSubmit` | 프롬프트 제출 직후, Claude 처리 전 | ✅ |
+| `PreToolUse` | 도구 호출 실행 **전** | ✅ (거부 가능) |
+| `PostToolUse` | 도구 호출 성공 **후** | ❌ (이미 실행됨) |
+| `PostToolUseFailure` | 도구 호출 실패 후 | — |
+| `Notification` | Claude Code가 알림을 보낼 때 | — |
+| `SubagentStart` / `SubagentStop` | 서브에이전트 생성/종료 시 | — |
+| `Stop` | Claude가 응답을 마칠 때마다 (중단 시엔 X) | ✅ |
+| `PreCompact` / `PostCompact` | 컨텍스트 압축 전/후 | — |
+| `SessionEnd` | 세션 종료 시 | — |
+
+> 그 외 `FileChanged`, `CwdChanged`, `ConfigChange`, `PermissionRequest`, `InstructionsLoaded` 등 다양한 이벤트가 있습니다.
+
+### 설정 형식
+
+`settings.json`의 `hooks` 블록에 **이벤트 → matcher → 명령** 구조로 등록합니다.
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "jq -r '.tool_input.file_path' | xargs npx prettier --write" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+- **matcher** — 도구 이름 패턴(`Edit|Write`, `Bash` 등). 생략 시 해당 이벤트 전부에 적용. (v2.1.191+는 `Edit,Write`도 허용)
+- **type** — 대부분 `command`(셸 명령). 이 외 `http`(URL POST), `mcp_tool`(MCP 도구 호출), `prompt`(LLM 판단), `agent`(다중 턴 검증) 지원
+- 같은 이벤트에 여러 hook을 등록하면 **병렬 실행**되고 결과가 병합됨
+
+### 입력과 출력 (통신 방식)
+
+Hook은 **stdin(JSON 입력) · stdout · stderr · 종료 코드**로 Claude Code와 통신합니다.
+
+**입력** — 이벤트 데이터가 JSON으로 stdin에 전달 (`session_id`, `cwd`, `hook_event_name`, `tool_name`, `tool_input` 등). `jq`로 파싱하는 것이 일반적.
+
+**출력 — 종료 코드**
+
+| 종료 코드 | 의미 |
+| --- | --- |
+| **0** | 이의 없음, 정상 진행. (`UserPromptSubmit`·`SessionStart`는 stdout이 **Claude 컨텍스트에 주입**됨) |
+| **2** | 작업 **차단**. stderr에 쓴 이유가 Claude에게 피드백으로 전달됨 |
+| 그 외 | 진행하되 `hook error` 공지 + stderr 첫 줄 표시 |
+
+**출력 — 구조화된 JSON** (더 정밀한 제어, exit 0 + stdout에 JSON)
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "Use rg instead of grep for better performance"
+  }
+}
+```
+
+- `PreToolUse`의 `permissionDecision`: `allow`(프롬프트 건너뜀) / `deny`(취소+이유) / `ask`(사용자에게 질문)
+- `UserPromptSubmit`은 `hookSpecificOutput.additionalContext`로 컨텍스트 주입
+- ⚠️ exit 2(차단)와 JSON을 **혼용 금지** — exit 2일 때 JSON은 무시됨
+
+### 실전 예시
+
+**1) 편집 후 자동 포맷팅** (위 설정 예시 참고) — `PostToolUse` + `Edit|Write` + Prettier
+
+**2) 보호 파일 편집 차단** — `PreToolUse` + `Edit|Write`, 스크립트가 exit 2로 차단
+
+```bash
+#!/bin/bash
+INPUT=$(cat)
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+PROTECTED_PATTERNS=(".env" "package-lock.json" ".git/")
+for pattern in "${PROTECTED_PATTERNS[@]}"; do
+  if [[ "$FILE_PATH" == *"$pattern"* ]]; then
+    echo "Blocked: $FILE_PATH matches protected pattern '$pattern'" >&2
+    exit 2
+  fi
+done
+exit 0
+```
+
+**3) 입력 대기 시 데스크톱 알림** — `Notification` 이벤트 (macOS `osascript`, Linux `notify-send` 등)
+
+**4) 압축 후 컨텍스트 재주입** — `SessionStart` + matcher `compact`, `echo`한 텍스트가 컨텍스트에 추가
+
+**5) 위험 명령 차단** — `PreToolUse` + `Bash`, `rm -rf`·`drop table` 등 패턴 감지 시 exit 2
+
+### 설정 위치 (범위)
+
+| 위치 | 범위 | 공유 |
+| --- | --- | --- |
+| `~/.claude/settings.json` | 모든 프로젝트 | 로컬 |
+| `.claude/settings.json` | 단일 프로젝트 | git 커밋 가능 |
+| `.claude/settings.local.json` | 단일 프로젝트 | gitignored |
+| 관리형 정책 설정 | 조직 전체 | 관리자 제어 |
+| 플러그인 `hooks/hooks.json` | 플러그인 활성 시 | 플러그인 번들 |
+| Skill/Agent frontmatter | 해당 컴포넌트 활성 시 | 컴포넌트에 정의 |
+
+> `/hooks` 명령으로 현재 등록된 hooks를 확인하고, `"disableAllHooks": true`로 전체 비활성화(관리형 설정 제외).
+
+### 보안 · 주의사항
+
+- ⚠️ **Hooks는 여러분의 사용자 권한으로 임의 셸 명령을 실행**합니다. 신뢰할 수 없는 설정/플러그인의 hook은 위험 — 등록 전 반드시 내용 검토
+- `PostToolUse`는 도구가 **이미 실행된 뒤**라 취소 불가 (차단하려면 `PreToolUse` 사용)
+- `Stop`은 매 응답 종료마다 발생(작업 완료 시점만이 아님), 사용자 중단 시엔 미발생
+- 여러 hook이 같은 도구 입력을 수정하면 순서가 비결정적 — 입력 수정 hook은 하나만 두기
+- 타임아웃: `command`/`http` 기본 10분, `UserPromptSubmit` 30초, `prompt` 30초, `agent` 60초 (`timeout` 필드로 조정)
+
+### 핵심 정리
+
+> **Hooks = "항상 일어나야 하는 일을 코드로 강제"**.
+> CLAUDE.md가 *권고*라면 Hooks는 *강제*. `PreToolUse`로 사전 차단·검증, `PostToolUse`로 사후 자동화(포맷·테스트), `Notification`/`Stop`으로 알림, `SessionStart`로 컨텍스트 주입에 주로 씁니다.
+
+### 참고 링크
+
+- [hooks를 사용하여 작업 자동화 — 공식 가이드(한국어)](https://code.claude.com/docs/ko/hooks-guide)
+- [Hooks 참조(전체 스키마) — 공식 문서(한국어)](https://code.claude.com/docs/ko/hooks)
