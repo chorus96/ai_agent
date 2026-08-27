@@ -20,7 +20,8 @@
    - [디렉토리·설정](#디렉토리설정)
    - [백그라운드·원격·워크트리](#백그라운드원격워크트리)
    - [진단·기타](#진단기타)
-4. [자주 쓰는 예시](#4-자주-쓰는-예시)
+4. [세션 내 슬래시 명령어 (Slash Commands)](#4-세션-내-슬래시-명령어-slash-commands)
+5. [자주 쓰는 예시](#5-자주-쓰는-예시)
 
 ---
 
@@ -212,7 +213,153 @@
 
 ---
 
-## 4. 자주 쓰는 예시
+## 4. 세션 내 슬래시 명령어 (Slash Commands)
+
+Claude Code 실행 중(대화형 세션) **`/`로 시작해 입력**하는 명령어입니다. 위의 셸 명령/플래그(`claude ...`)와 달리 세션 안에서 작동합니다.
+
+> - **명령어는 메시지의 시작 부분에서만 인식**됩니다.
+> - **[Skill]** 표시는 고정 로직이 아니라 프롬프트 기반 **번들 Skill**(Claude가 자동 호출 가능). 최대 6개까지 연결 가능: `/skill-a /skill-b do XYZ`
+> - 사용자 정의 슬래시 명령어는 Skills로 만듭니다 → [`claude_code_tips.md` Skills 만들기](./claude_code_tips.md#skills-만들기) 참고
+
+### 기본·세션 관리
+
+| 명령어 | 인자 | 기능 |
+| --- | --- | --- |
+| `/help` | — | 도움말·명령어 목록 |
+| `/status` | — | 버전·모델·계정·연결성 표시 |
+| `/config` (별칭 `/settings`) | `[key=value]` | 테마·모델·output style 등 설정 |
+| `/login` / `/logout` | — | 로그인 / 로그아웃 |
+| `/exit` (별칭 `/quit`) | — | CLI 종료 (백그라운드 세션은 유지) |
+| `/vim` | — | Vim 편집 모드 토글 |
+| `/terminal-setup` | — | 터미널 개행 키 바인딩 설정 |
+
+### 프로젝트·메모리
+
+| 명령어 | 인자 | 기능 |
+| --- | --- | --- |
+| `/init` | — | `CLAUDE.md` 생성 (skills·hooks 설정 포함) |
+| `/memory` | — | CLAUDE.md 편집·auto-memory 토글 |
+| `/cd` | `<path>` | 작업 디렉토리 이동 (프롬프트 캐시 보존) |
+| `/add-dir` | `<path>` | 파일 접근용 작업 디렉토리 추가 |
+
+### 모델·처리
+
+| 명령어 | 인자 | 기능 |
+| --- | --- | --- |
+| `/model` | `[model]` | 모델 전환 (없으면 선택기) |
+| `/effort` | `[level\|auto]` | 노력 수준 (`low`~`max`, `ultracode`) |
+| `/fast` | `[on\|off]` | fast mode 토글 |
+| `/advisor` | `[model\|off]` | advisor 도구 토글 |
+
+### 대화·컨텍스트
+
+| 명령어 | 인자 | 기능 |
+| --- | --- | --- |
+| `/clear` (별칭 `/reset`,`/new`) | `[name]` | 빈 컨텍스트로 새 대화 |
+| `/compact` | `[instructions]` | 대화 요약해 컨텍스트 확보 |
+| `/context` | `[all]` | 컨텍스트 사용량 시각화 |
+| `/btw` | `<question>` | 대화에 미포함 side question |
+| `/branch` | `[name]` | 현재 대화의 브랜치 생성 |
+| `/fork` | `<directive>` | 대화 상속 forked 서브에이전트 (백그라운드) |
+| `/resume` (별칭 `/continue`) | `[session]` | 대화 재개 / 선택기 |
+| `/rename` | `[name]` | 세션 이름 변경 |
+| `/rewind` (별칭 `/checkpoint`,`/undo`) | — | 대화/코드 이전 지점으로 되감기 |
+| `/plan` | `[description]` | 계획 모드 진입 |
+
+### 코드 검토·보안 · Diff
+
+| 명령어 | 인자 | 기능 |
+| --- | --- | --- |
+| `/code-review` **[Skill]** | `[level] [--fix] [--comment] [target]` | diff 정확성 버그·정리·효율성 검토 |
+| `/simplify` **[Skill]** | `[target]` | 정리만 검토 (버그 제외) |
+| `/security-review` | — | 보안 취약점 분석 |
+| `/review` **[Skill]** | `[PR]` | PR 빠른 단일 패스 검토 |
+| `/diff` | — | 커밋되지 않은 변경·턴별 diff 뷰어 |
+| `/export` | `[filename]` | 대화를 평문으로 내보내기 |
+| `/copy` | `[N]` | 마지막 응답 클립보드 복사 |
+
+### 권한·도구·설정
+
+| 명령어 | 인자 | 기능 |
+| --- | --- | --- |
+| `/permissions` (별칭 `/allowed-tools`) | — | 도구 권한 규칙(허용/요청/거부) |
+| `/mcp` | `[reconnect\|enable\|disable]` | MCP 서버 연결·OAuth |
+| `/hooks` | — | hook 구성 보기 |
+| `/keybindings` | — | 키보드 단축키 파일 열기 |
+| `/statusline` | — | 상태 표시줄 구성 |
+| `/color` | `[color\|default]` | 프롬프트 바 색상 |
+
+### 세션·백그라운드
+
+| 명령어 | 인자 | 기능 |
+| --- | --- | --- |
+| `/background` (별칭 `/bg`) | `[prompt]` | 세션을 백그라운드 에이전트로 분리 |
+| `/tasks` (별칭 `/bashes`) | — | 백그라운드 작업 보기·관리 |
+| `/stop` | — | 현재 백그라운드 세션 중지 |
+| `/batch` **[Skill]** | `<instruction>` | 대규모 변경 병렬 조율 |
+| `/agents` | — | 서브에이전트 생성·관리 |
+
+### 사용량·진단
+
+| 명령어 | 인자 | 기능 |
+| --- | --- | --- |
+| `/usage` (별칭 `/cost`,`/stats`) | — | 토큰 사용량·비용 |
+| `/doctor` **[Skill]** (별칭 `/checkup`) | — | 설정 검사·진단·수정 |
+| `/debug` **[Skill]** | `[description]` | 디버그 로깅·문제 해결 |
+| `/feedback` (별칭 `/bug`,`/share`) | `[report]` | 피드백·버그 보고 |
+| `/heapdump` | — | JS 힙 스냅샷 (메모리 진단) |
+| `/release-notes` | — | 변경 로그 보기 |
+
+### 번들 Skill·Workflow
+
+| 명령어 | 인자 | 기능 |
+| --- | --- | --- |
+| `/run` **[Skill]** | — | 앱 실행해 변경 검증 |
+| `/verify` **[Skill]** | — | 앱 빌드·실행 검증 |
+| `/run-skill-generator` **[Skill]** | — | `/run`·`/verify` 레시피 학습·저장 |
+| `/loop` **[Skill]** (별칭 `/proactive`) | `[interval] [prompt]` | 프롬프트 반복 실행 |
+| `/claude-api` **[Skill]** | `[migrate\|...]` | Claude API 참조 로드·업그레이드 |
+| `/dataviz` **[Skill]** | `[request]` | 차트·대시보드 디자인 지침 |
+| `/deep-research` **[Workflow]** | `<question>` | 웹 검색·교차 검증·보고서 종합 |
+| `/fewer-permission-prompts` **[Skill]** | — | 허용 목록 추가로 프롬프트 감소 |
+
+### 스킬·플러그인
+
+| 명령어 | 인자 | 기능 |
+| --- | --- | --- |
+| `/skills` | — | skill 목록·가시성 제어 |
+| `/reload-skills` | — | skill 디렉토리 재스캔 |
+| `/plugin` | `[subcommand]` | 플러그인 관리(list/install/enable/disable) |
+| `/reload-plugins` | `[--force]` | 활성 플러그인 다시 로드 |
+
+### 원격·통합
+
+| 명령어 | 인자 | 기능 |
+| --- | --- | --- |
+| `/remote-control` (별칭 `/rc`) | — | claude.ai에서 원격 제어 가능하게 |
+| `/teleport` | — | 웹 세션을 터미널로 |
+| `/desktop` (별칭 `/app`) | — | 데스크톱 앱에서 계속 |
+| `/mobile` (별칭 `/ios`,`/android`) | — | 모바일 앱 QR |
+| `/autofix-pr` | `[prompt]` | PR 자동 수정 세션 (CI·리뷰 감시) |
+| `/install-github-app` | — | GitHub App 설치 |
+| `/install-slack-app` | — | Slack 앱 설치 |
+| `/ide` / `/chrome` | — | IDE 통합 / Chrome 설정 |
+
+### 기타
+
+| 명령어 | 인자 | 기능 |
+| --- | --- | --- |
+| `/goal` | `[condition\|clear]` | 목표 설정 (조건 충족까지 계속) |
+| `/recap` | — | 세션 한 줄 요약 |
+| `/insights` | — | 세션 분석 보고서 |
+| `/schedule` (별칭 `/routines`) | `[description]` | 예약 작업(routines) 생성·관리 |
+| `/privacy-settings` | — | 개인정보 설정 |
+| `/focus` | — | 포커스 뷰 전환 |
+| `/upgrade` | — | Pro/Max 업그레이드 |
+
+---
+
+## 5. 자주 쓰는 예시
 
 ```bash
 # 일회성 질의 후 종료
