@@ -241,4 +241,59 @@ Claude Code를 **한 권의 책**으로 체계적으로 다룬 WikiDocs 자료�
 
 ---
 
+## 9. GitHub 저장소 모음
+
+Claude Code 및 **Claude Agent SDK** 관련 주요 GitHub 저장소를 정리했습니다. (⭐ 스타 수는 2026-08 조사 시점 기준 근사치이며 변동됩니다.)
+
+### 공식 (Anthropic)
+
+| 저장소 | 설명 | ⭐(근사) |
+| --- | --- | --- |
+| [anthropics/claude-code](https://github.com/anthropics/claude-code) | Claude Code 본체 — 이슈 트래킹·릴리스·문서 | ~143k |
+| [anthropics/claude-agent-sdk-python](https://github.com/anthropics/claude-agent-sdk-python) | **Agent SDK — Python** (MIT) | ~8k |
+| [anthropics/claude-agent-sdk-typescript](https://github.com/anthropics/claude-agent-sdk-typescript) | **Agent SDK — TypeScript** (MIT) | ~1.7k |
+| [anthropics/claude-agent-sdk-demos](https://github.com/anthropics/claude-agent-sdk-demos) | Agent SDK 예제 에이전트 모음 | ~2.7k |
+| [anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official) | 공식 플러그인 디렉토리(마켓플레이스) | ~34k |
+| [anthropics/claude-plugins-community](https://github.com/anthropics/claude-plugins-community) | 커뮤니티 플러그인 마켓플레이스(미러) | ~2.3k |
+| [anthropics/claude-code-action](https://github.com/anthropics/claude-code-action) | Claude Code용 GitHub Action | ~8.7k |
+| [anthropics/claude-code-security-review](https://github.com/anthropics/claude-code-security-review) | AI 보안 리뷰 GitHub Action | ~6k |
+| [anthropics/devcontainer-features](https://github.com/anthropics/devcontainer-features) | Dev Container Features (Claude Code CLI 포함) | ~300 |
+| [anthropics/claude-code-monitoring-guide](https://github.com/anthropics/claude-code-monitoring-guide) | 사용량·모니터링 가이드 | ~370 |
+
+### 커뮤니티 SDK (비공식 언어 포팅)
+
+| 저장소 | 언어 | 비고 |
+| --- | --- | --- |
+| [severity1/claude-agent-sdk-go](https://github.com/severity1/claude-agent-sdk-go) | Go | 비공식 Go SDK |
+| [tyrchen/claude-agent-sdk-rs](https://github.com/tyrchen/claude-agent-sdk-rs) | Rust | 비공식 Rust SDK |
+| [jamesrochabrun/ClaudeCodeSDK](https://github.com/jamesrochabrun/ClaudeCodeSDK) | Swift | 비공식 Swift SDK |
+| [markpollack/claude-agent-sdk-java](https://github.com/markpollack/claude-agent-sdk-java) | Java | 비공식 Java SDK (활성 저장소) |
+| [ben-vargas/ai-sdk-provider-claude-code](https://github.com/ben-vargas/ai-sdk-provider-claude-code) | TS | Vercel AI SDK용 프로바이더 |
+
+### 도구 · 유틸리티
+
+| 저장소 | 설명 | ⭐(근사) |
+| --- | --- | --- |
+| [musistudio/claude-code-router](https://github.com/musistudio/claude-code-router) | 요청을 여러 모델로 라우팅하는 로컬 컨트롤 플레인 | ~37k |
+| [davila7/claude-code-templates](https://github.com/davila7/claude-code-templates) | 설정·모니터링 CLI 도구 | ~30k |
+| [Maciek-roboblog/Claude-Code-Usage-Monitor](https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor) | 실시간 사용량 모니터 | ~8.7k |
+| [Piebald-AI/claude-code-system-prompts](https://github.com/Piebald-AI/claude-code-system-prompts) | Claude Code 시스템 프롬프트·툴 설명 아카이브 | ~12k |
+
+### 학습 · 큐레이션 · 예제
+
+| 저장소 | 설명 | ⭐(근사) |
+| --- | --- | --- |
+| [hesreallyhim/awesome-claude-code](https://github.com/hesreallyhim/awesome-claude-code) | Claude Code 리소스 큐레이션(어썸 리스트) | ~53k |
+| [shanraisshan/claude-code-best-practice](https://github.com/shanraisshan/claude-code-best-practice) | 모범 사례·에이전틱 엔지니어링 | ~65k |
+| [shareAI-lab/learn-claude-code](https://github.com/shareAI-lab/learn-claude-code) | 미니 에이전트 하네스 직접 구현 튜토리얼 | ~75k |
+| [VoltAgent/awesome-claude-code-subagents](https://github.com/VoltAgent/awesome-claude-code-subagents) | 100+ 서브에이전트 모음 | ~24k |
+| [ykdojo/claude-code-tips](https://github.com/ykdojo/claude-code-tips) | 45+ 실전 팁·커스텀 스테이터스라인 | ~10k |
+| [ChrisWiles/claude-code-showcase](https://github.com/ChrisWiles/claude-code-showcase) | hooks·skills·agents·commands 종합 설정 예제 | ~6k |
+| [diet103/claude-code-infrastructure-showcase](https://github.com/diet103/claude-code-infrastructure-showcase) | skill 자동 활성화·hooks·agents 인프라 예제 | ~10k |
+| [ErlichLiu/claude-agent-sdk-master](https://github.com/ErlichLiu/claude-agent-sdk-master) | Agent SDK 실전 튜토리얼(Skills·MCP) | ~300 |
+
+> ⚠️ 참고: 비공식·커뮤니티 저장소는 Anthropic이 보증하지 않으며 품질·유지보수 상태가 다양합니다. 특히 "무료 토큰"·"원본 재배포"류 저장소는 약관 위반·보안 위험이 있을 수 있으니 사용 전 라이선스와 신뢰성을 확인하세요.
+
+---
+
 > 본 문서의 링크·요약은 웹 검색 및 공식 문서를 기반으로 정리되었으며, 각 블로그의 상세 내용과 최신 정보는 원문 링크에서 확인하는 것을 권장합니다.
