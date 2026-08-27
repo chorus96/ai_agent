@@ -14,6 +14,7 @@
 7. [권한 모드 (Permission Modes)](#권한-모드-permission-modes)
 8. [Plan Mode (계획 모드)](#plan-mode-계획-모드)
 9. [Slash Commands (슬래시 명령어)](#slash-commands-슬래시-명령어)
+10. [Slash Commands vs Skill 비교](#slash-commands-vs-skill-비교)
 
 ---
 
@@ -746,3 +747,71 @@ Claude Code 실행 중 **`/`로 시작하는 명령어**로 세션 관리·설�
 ### 참고 링크
 
 - [명령어 참조 — 공식 문서(한국어)](https://code.claude.com/docs/ko/commands)
+
+---
+
+## Slash Commands vs Skill 비교
+
+이 둘은 **대등하게 비교하기 어렵습니다** — 최근 Claude Code에서 **사용자 정의 슬래시 명령어가 Skills로 통합**되었기 때문입니다. 층위가 다릅니다.
+
+> - **Slash Command** = **"호출 방식(입력 표면)"** — `/이름`을 타이핑해서 실행하는 것
+> - **Skill** = **"실제 기능 패키지"** — 그 `/명령`이 실행하는 지침·절차의 실체
+
+즉 **"슬래시 명령어"는 Skill을 부르는 여러 방법 중 하나**입니다. 대체 관계가 아니라 포함 관계에 가깝습니다.
+
+### 슬래시 명령어의 세 종류
+
+| 종류 | 예시 | 실체 |
+| --- | --- | --- |
+| **기본 제공 명령어** | `/help`, `/clear`, `/compact`, `/model` | 고정 로직 (Skill 아님) |
+| **번들 Skill** | `/code-review`, `/debug`, `/run`, `/loop` | **Skill** (프롬프트 기반) |
+| **사용자 정의 명령어** | `/deploy`, `/fix-issue` | **Skill** (또는 레거시 `commands/` 파일) |
+
+→ `/help` 같은 건 Skill이 아니지만, `/code-review`나 직접 만든 `/deploy`는 속을 보면 **Skill**입니다.
+
+### Skill vs (사용자 정의) Slash Command
+
+과거에는 `.claude/commands/deploy.md`(명령어)와 `.claude/skills/deploy/SKILL.md`(스킬)가 별개였지만, **지금은 둘 다 `/deploy`를 만들고 동일하게 작동**합니다. 기존 `commands/` 파일도 계속 지원되지만 Skill이 더 많은 기능을 제공합니다.
+
+| 항목 | 레거시 Slash Command (`commands/`) | **Skill** (`skills/`) |
+| --- | --- | --- |
+| **파일 구조** | 단일 `.md` 파일 | **디렉토리** (`SKILL.md` + 지원 파일·스크립트) |
+| **호출 주체** | 사용자만 (`/name`) | **사용자 + Claude 자동 호출** |
+| **자동 로드** | ❌ | ✅ (`description` 기반, 관련 있을 때 자동) |
+| **점진적 공개** | — | ✅ 본문은 호출될 때만 로드(토큰 절약) |
+| **호출 제어 frontmatter** | 제한적 | `disable-model-invocation`, `user-invocable`, `allowed-tools`, `paths`, `context: fork` 등 |
+| **지원 파일·스크립트** | ❌ | ✅ 템플릿·예제·`scripts/` 번들 |
+| **인수** | 지원 | 지원 (`$ARGUMENTS`, `$N`) |
+
+### 결정적 차이 — "자동 호출" 여부
+
+가장 중요한 실질적 차이는 **누가 호출하는가**입니다.
+
+- **순수 슬래시 명령어 성격** → *사용자가* `/명령`을 쳐야만 실행 (수동)
+- **Skill 성격** → 사용자가 `/명령`으로 호출할 수도, **Claude가 관련 있다고 판단해 자동으로** 로드할 수도 있음
+
+그래서 실무에서는 frontmatter로 성격을 조절합니다:
+
+```yaml
+# "슬래시 명령어처럼" — 사용자만 수동 실행 (부작용 있는 작업)
+---
+description: Deploy to production
+disable-model-invocation: true   # Claude 자동 실행 방지
+---
+
+# "Skill답게" — Claude가 상황 봐서 자동 적용 (배경 지식·규칙)
+---
+description: API design patterns for this codebase
+---
+```
+
+### 핵심 정리
+
+> - **Slash Command**은 *실행하는 방법*(`/이름` 타이핑), **Skill**은 *실행되는 실체*(기능 패키지)
+> - 사용자 정의 슬래시 명령어는 이제 **Skill로 통합** — `commands/*.md`도 되지만 `skills/*/SKILL.md`가 권장
+> - 핵심 차이는 **자동 호출**: 슬래시 명령어는 "사용자 수동", Skill은 "사용자 + Claude 자동" (frontmatter로 조절)
+> - `/help`·`/clear` 같은 **기본 제공 명령어는 Skill이 아닌 고정 로직**
+
+### 참고 링크
+
+- [Claude를 skills로 확장하기 — 공식 문서(한국어)](https://code.claude.com/docs/ko/skills) · [명령어 참조](https://code.claude.com/docs/ko/commands)
