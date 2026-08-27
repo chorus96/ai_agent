@@ -22,7 +22,7 @@
 13. [Routines (스케줄된 작업)](#routines-스케줄된-작업)
 14. [Code Review (코드 리뷰)](#code-review-코드-리뷰)
 
-> 📚 관련 문서: 한글 자료·도서·GitHub 모음은 [`claude_code.md`](./claude_code.md), CLI 명령어·플래그·슬래시 명령어 레퍼런스는 [`claude_code_cli.md`](./claude_code_cli.md) 참고.
+> 📚 관련 문서: 한글 자료·도서·GitHub 모음은 [`claude_code.md`](./claude_code.md), CLI 명령어·플래그·슬래시 명령어 레퍼런스는 [`claude_code_cli.md`](./claude_code_cli.md), Agent SDK Python 프로그래밍은 [`claude_agent_sdk_python.md`](./claude_agent_sdk_python.md) 참고.
 
 ---
 
@@ -275,6 +275,7 @@ SDK로 만든 제품에 Claude 브랜딩은 선택 사항이며, **"Claude Agent
 
 ### 참고 링크
 
+- 📄 **Python 프로그래밍 상세 가이드**: [`claude_agent_sdk_python.md`](./claude_agent_sdk_python.md) (설치·query/Client·커스텀 도구·권한·인터럽트 등)
 - [Agent SDK 개요 — 공식 문서](https://code.claude.com/docs/en/agent-sdk/overview)
 - [Python SDK LICENSE (MIT)](https://github.com/anthropics/claude-agent-sdk-python/blob/main/LICENSE)
 - [Quickstart](https://code.claude.com/docs/en/agent-sdk/quickstart)
