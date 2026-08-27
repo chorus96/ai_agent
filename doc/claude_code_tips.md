@@ -178,7 +178,7 @@ pip install claude-agent-sdk
 npm install @anthropic-ai/claude-agent-sdk
 ```
 
-- **인증**: API 키 방식 사용 (Anthropic Console에서 발급). Agent SDK로 만든 제품에는 **claude.ai 로그인/요율 사용이 사전 승인 없이는 허용되지 않음** — 반드시 API 키 인증 사용
+- **인증**: Console API 키뿐 아니라 **사내 LLM 게이트웨이·클라우드 프로바이더(Bedrock/Vertex/Foundry)** 도 지원 (아래 [인증·프로바이더](#인증프로바이더-사내-llm-포함) 참고)
 - 핵심 진입점은 **`query`** (프롬프트를 주면 에이전트 루프가 돌며 도구를 호출하고 결과 메시지를 스트리밍)
 
 ```python
@@ -190,6 +190,34 @@ async def main():
         print(message)
 
 anyio.run(main)
+```
+
+### 인증·프로바이더 (사내 LLM 포함)
+
+Agent SDK는 **"Claude Code를 라이브러리로"** 돌리는 것이라, **CLI가 지원하는 프로바이더 설정을 그대로 상속**합니다. 따라서 **Anthropic Console API 키만 되는 것이 아니라**, 사내 LLM 게이트웨이나 클라우드 프로바이더로도 동작합니다.
+
+> **오해 주의**: Agent SDK에서 금지되는 것은 딱 하나 — **claude.ai *개인 구독 로그인*(Pro/Max OAuth)으로 만든 제품을 제3자에게 제공**하는 것(사전 승인 필요)입니다. 이는 **비즈니스/약관상 제한**이지 "Console API 키만 허용"이라는 기술적 제한이 아닙니다.
+
+| 인증 방식 | 설정 환경변수 |
+| --- | --- |
+| **사내 LLM 게이트웨이** | `ANTHROPIC_BASE_URL` (+ 필요 시 `ANTHROPIC_AUTH_TOKEN`) |
+| Anthropic Console | `ANTHROPIC_API_KEY` |
+| Amazon Bedrock | `CLAUDE_CODE_USE_BEDROCK=1` + AWS 자격증명 |
+| Google Cloud Agent Platform (Vertex) | `CLAUDE_CODE_USE_VERTEX=1` + GCP 자격증명 |
+| Microsoft Foundry | Foundry 설정 + API 키/Entra ID |
+| 프로바이더별 게이트웨이 경유 | `ANTHROPIC_BEDROCK_BASE_URL`, `ANTHROPIC_VERTEX_BASE_URL`, `ANTHROPIC_FOUNDRY_BASE_URL`, `ANTHROPIC_AWS_BASE_URL` |
+| 회사 프록시 | `HTTPS_PROXY` / `HTTP_PROXY` |
+
+**실무 팁 — 사내 LLM을 이미 CLI로 쓰고 있다면**
+
+- CLI에서 **`/status`** 를 실행하면 현재 세션이 쓰는 **프로바이더·base URL·프록시**를 확인할 수 있습니다 (보통 `ANTHROPIC_BASE_URL`로 사내 게이트웨이를 가리키는 방식).
+- Agent SDK는 **별도 키 발급 없이**, SDK를 실행하는 프로세스 환경에 **CLI가 쓰는 것과 동일한 환경변수**를 넘겨주면 그대로 사내 LLM으로 동작합니다.
+
+```bash
+# 사내 게이트웨이로 Agent SDK 실행 (SDK 프로세스가 상속하는 환경변수)
+export ANTHROPIC_BASE_URL="https://llm-gateway.mycompany.com"
+export ANTHROPIC_AUTH_TOKEN="<사내 토큰>"
+python my_agent.py
 ```
 
 ### 활용 사례
@@ -206,7 +234,7 @@ SDK로 만든 제품에 Claude 브랜딩은 선택 사항이며, **"Claude Agent
 ### 핵심 정리
 
 > **Claude Agent SDK = "Claude Code를 라이브러리로"**.
-> CLI가 사람이 터미널에서 쓰는 도구라면, SDK는 **내 프로그램이 Claude Code 엔진(도구·에이전트 루프·컨텍스트·MCP·서브에이전트·Hooks)을 직접 호출**해 커스텀 AI 에이전트를 만드는 방식입니다. Python·TypeScript를 지원하며, API 키로 인증합니다.
+> CLI가 사람이 터미널에서 쓰는 도구라면, SDK는 **내 프로그램이 Claude Code 엔진(도구·에이전트 루프·컨텍스트·MCP·서브에이전트·Hooks)을 직접 호출**해 커스텀 AI 에이전트를 만드는 방식입니다. Python·TypeScript를 지원하며, **Console API 키·사내 게이트웨이·Bedrock/Vertex/Foundry** 로 인증할 수 있습니다.
 
 ### 참고 링크
 
@@ -214,6 +242,7 @@ SDK로 만든 제품에 Claude 브랜딩은 선택 사항이며, **"Claude Agent
 - [Quickstart](https://code.claude.com/docs/en/agent-sdk/quickstart)
 - [TypeScript SDK (GitHub)](https://github.com/anthropics/claude-agent-sdk-typescript) · [Python SDK (GitHub)](https://github.com/anthropics/claude-agent-sdk-python)
 - [예제 에이전트 모음 (GitHub)](https://github.com/anthropics/claude-agent-sdk-demos)
+- [엔터프라이즈 배포 개요 (프로바이더·게이트웨이)](https://code.claude.com/docs/en/third-party-integrations) · [LLM 게이트웨이](https://code.claude.com/docs/en/llm-gateway)
 
 ---
 
