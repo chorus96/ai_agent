@@ -123,7 +123,6 @@ AI 모델이 외부 도구·데이터베이스·API와 상호작용하기 위한
 
 - [Claude Code 완벽 가이드: 설치부터 실전 활용까지 한 번에 (2026) — 오픈위키](https://wikidocs.net/blog/@openwiki/21860/) — 설치·요금제·핵심 기능·실전 워크플로우 총정리
 - [CC101 — Claude Code 한국어 입문 가이드](https://cc101.axwith.com/) — 한국어 입문자용 정리 사이트
-- [Claude Code 사용법 완벽 가이드: 설치부터 실전 명령어, 에러 해결까지 — ProfBear](https://profbear.kr/claude-code-usage-guide/) — 설치·명령어·한글 설정·에러 해결 포함
 - [Claude Code 완벽 가이드 (한글 요약본) — Velog(skysoo)](https://velog.io/@skysoo/Claude-Code-%EC%99%84%EB%B2%BD-%EA%B0%80%EC%9D%B4%EB%93%9C-%ED%95%9C%EA%B8%80-%EC%9A%94%EC%95%BD%EB%B3%B8) — 공식 완벽 가이드의 한글 요약
 - [Claude Code 완벽 가이드 — Chaos and Order (youngju.dev)](https://www.youngju.dev/blog/llm/claude_code_complete_guide) — 개발 생산성 관점의 종합 정리
 
