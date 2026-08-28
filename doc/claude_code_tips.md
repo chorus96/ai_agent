@@ -10,6 +10,7 @@
 3. [Claude Agent SDK](#claude-agent-sdk) — 개념·기능·인증(사내 LLM 포함)·오픈소스 여부
 4. [Subagents(서브에이전트) 활용법](#subagents서브에이전트-활용법)
    - [Subagents vs Agent Teams](#subagents-vs-agent-teams)
+   - [Workflow (동적 워크플로우)](#workflow-동적-워크플로우)
 5. [Hooks(훅) 실전 활용](#hooks훅-실전-활용)
    - [Hooks vs 스크립트 실행](#hooks-vs-스크립트-실행)
 6. [Skills 만들기](#skills-만들기)
@@ -484,6 +485,89 @@ claude --agent code-reviewer
 ### 참고 링크
 
 - [세션 팀 조율하기(Agent Teams) — 공식 문서(한국어)](https://code.claude.com/docs/ko/agent-teams) · [Subagents](https://code.claude.com/docs/ko/sub-agents)
+
+---
+
+## Workflow (동적 워크플로우)
+
+**동적 워크플로우 = Claude가 작성한 JavaScript 스크립트가 수많은 서브에이전트를 조율**하는 것입니다. 스크립트가 백그라운드에서 실행되는 동안 세션은 자유롭게 쓸 수 있고, 결과는 **하나의 통합 보고서**로 돌아옵니다.
+
+> 한 대화로 조율할 수 있는 것보다 **훨씬 많은 에이전트(실행당 수십~수백 개)** 가 필요하거나, 조율 자체를 **재실행 가능한 코드로 박제**하고 싶을 때 씁니다.
+
+### 다른 방식과의 차이 (누가 "계획"을 쥐고 있나)
+
+| | 서브에이전트 | 스킬 | 에이전트 팀 | **워크플로우** |
+| --- | --- | --- | --- | --- |
+| 정의 | Claude가 만든 워커 | Claude가 따르는 지침 | 피어 감독 리드 | **런타임이 실행하는 스크립트** |
+| 다음 단계 결정 | Claude가 차례로 | Claude가 프롬프트 따라 | 리드가 차례로 | **스크립트가** |
+| 중간 결과 위치 | Claude 컨텍스트 | Claude 컨텍스트 | 공유 작업 목록 | **스크립트 변수** |
+| 규모 | 차례당 몇 개 | 〃 | 소수 장기 피어 | **실행당 수십~수백 개** |
+| 재사용 대상 | 워커 정의 | 지침 | 팀 정의 | **조율 자체** |
+
+> **핵심 차이**: 서브에이전트/팀은 **Claude가 실시간 조율자**(모든 결과가 컨텍스트로 유입), 워크플로우는 **스크립트가 조율자**(루프·분기·중간결과를 스크립트가 보유 → Claude 컨텍스트엔 최종 답만).
+
+### 만드는 방법 (스크립트를 직접 안 짬)
+
+1. **프롬프트로 요청** — `ultracode` 키워드 또는 자연어("워크플로우로 ~해줘")
+   ```text
+   ultracode: audit every API endpoint under src/routes/ for missing auth checks
+   use a workflow to migrate every component from styled-components to Tailwind
+   ```
+2. **ultracode 모드** — `/effort ultracode`(xhigh 노력 + 자동 워크플로우 조율). 모든 실질 작업을 워크플로우로 계획, 토큰·시간↑. 복귀는 `/effort high`
+3. **기존 워크플로우 실행** — 번들 `/deep-research` 또는 저장한 `/<name>`
+
+### 번들 워크플로우 `/deep-research`
+
+```text
+/deep-research What changed in the Node.js permission model between v20 and v22?
+```
+→ 여러 각도로 웹 검색 확산 → 소스 교차 검증 → **검증 통과한 주장만** 인용 보고서 (WebSearch 도구 필요)
+
+### 실행·모니터링·저장
+
+- **`/workflows`** — 실행 목록·단계별 에이전트 수·토큰·시간, 드릴다운
+- 키: `p`(일시중지/재개) `x`(중지) `r`(재시작) **`s`(스크립트를 명령으로 저장)**
+- **저장**: `.claude/workflows/`(프로젝트·git 공유) / `~/.claude/workflows/`(개인) → 이후 `/<name>` 실행, `args`로 입력 전달
+
+### 저장된 스크립트 형태
+
+```javascript
+export const meta = { name: 'audit-routes', description: '...' }
+
+const found = await agent('List every .ts file under src/routes/.', { schema: {...} })
+const audits = await pipeline(found.files, file =>
+  agent(`Audit ${file} for missing authentication checks.`, { label: file }),
+)
+return audits.filter(Boolean)
+```
+- **`agent()`** = 서브에이전트 하나 생성, **`pipeline()`** = 목록 항목마다 하나씩. 최상위 `await` 가능한 순수 JS
+
+### 실행 방식·제한
+
+- 대화와 **격리된 환경**에서 실행, 중간 결과는 스크립트 변수(컨텍스트 밖)
+- **같은 세션 내 재개 가능**(완료 에이전트는 캐시 반환), 세션 종료 시 재시작
+- 제한: **동시 최대 16 에이전트**, **실행당 총 1,000 에이전트**, 실행 중 사용자 입력 없음
+- 워크플로우가 만든 서브에이전트는 항상 `acceptEdits`(파일 편집 자동 승인)·도구 허용목록 상속
+
+### ⚠️ 비용
+
+- 에이전트를 많이 띄우므로 **토큰 사용량 큼** → 큰 작업 전 **작은 범위로 시험**
+- 25개↑ 또는 예상 150만 토큰↑이면 **`Large workflow` 경고**
+- `/config`에서 **크기 지침**(small<5 / medium<15 / large<50 / unrestricted) 설정 가능
+- 끄기: `/config`, `"disableWorkflows": true`, `CLAUDE_CODE_DISABLE_WORKFLOWS=1`
+
+### 언제 쓰나
+
+코드베이스 전체 버그 스윕, 대량 파일 마이그레이션, 다수 소스 교차검증 연구, 여러 각도로 계획 후 비교, 검사 통과까지 반복 수정, flaky 테스트 반복 탐색.
+
+### 핵심 정리
+
+> **Workflow = "Claude가 짠 스크립트가 수십~수백 서브에이전트를 조율하는 재실행 가능한 오케스트레이션"**.
+> 서브에이전트/팀이 "Claude가 실시간 조율"이라면, 워크플로우는 **"계획을 코드로 박제"** 해 대규모·반복·품질패턴(적대적 검증 등)에 강합니다. `ultracode`·`/deep-research`가 대표 진입점입니다.
+
+### 참고 링크
+
+- [동적 워크플로우로 대규모 서브에이전트 조율 — 공식 문서(한국어)](https://code.claude.com/docs/ko/workflows)
 
 ---
 
