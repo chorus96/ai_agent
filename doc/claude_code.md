@@ -15,7 +15,7 @@
 8. [서점 판매 도서 (출간 서적)](#8-서점-판매-도서-출간-서적)
 9. [GitHub 저장소 모음](#9-github-저장소-모음) — Agent SDK 포함
 
-> 💡 Claude Code 심화 개념(Plugin·MCP·Memory·Agent SDK·Subagents·Hooks·Skills·권한 모드·Plan Mode·Slash Commands)은 [`claude_code_tips.md`](./claude_code_tips.md), CLI 레퍼런스는 [`claude_code_cli.md`](./claude_code_cli.md), Agent SDK Python 프로그래밍은 [`claude_agent_sdk_python.md`](./claude_agent_sdk_python.md) 참고.
+> 💡 Claude Code 심화 개념(Plugin·MCP·Memory·Agent SDK·Subagents·Hooks·Skills·권한 모드·Plan Mode·Slash Commands)은 [`claude_code_tips.md`](./claude_code_tips.md), CLI 레퍼런스는 [`claude_code_cli.md`](./claude_code_cli.md), Agent SDK 프로그래밍은 [Python](./claude_agent_sdk_python.md)·[TypeScript](./claude_agent_sdk_typescript.md) 참고.
 
 ---
 
