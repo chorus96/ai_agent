@@ -984,9 +984,50 @@ Claude Code 실행 중 **`/`로 시작하는 명령어**로 세션 관리·설�
 
 > 자세한 작성법은 위 [Skills 만들기](#skills-만들기) 섹션 참조.
 
+### 출처별 슬래시 노출 규칙 (Skill · Plugin · MCP prompt)
+
+슬래시 명령어는 **여러 출처가 하나의 `/` 메뉴로 합쳐진 표면**입니다. Skill·Plugin·MCP prompt는 각자 **이름 규칙(네임스페이스)** 으로 `/`에 등록되어 충돌을 피합니다.
+
+**1) Skill → `/<디렉토리 이름>`** — 명령어 이름은 **파일 위치(디렉토리명)** 에서 나옴 (frontmatter `name`은 표시 라벨일 뿐)
+
+| Skill 위치 | 명령어 이름 소스 | 예시 |
+| --- | --- | --- |
+| `~/.claude/skills/<name>/` · `.claude/skills/<name>/` | 디렉토리 이름 | `deploy-staging/` → `/deploy-staging` |
+| `.claude/commands/<name>.md` (레거시) | 파일명 | `deploy.md` → `/deploy` |
+| 중첩 skill(이름 충돌 시) | 하위경로:디렉토리 | `apps/web/.claude/skills/deploy/` → `/apps/web:deploy` |
+
+**2) Plugin → `/<plugin>:<이름>`** — 플러그인 이름으로 **네임스페이스**
+
+| Plugin 내 위치 | 명령어 이름 | 예시 |
+| --- | --- | --- |
+| `<plugin>/skills/<name>/SKILL.md` | `plugin:name` | `my-plugin/skills/review/` → `/my-plugin:review` |
+| 하위 폴더 구성 | `plugin:folder:name` | `/my-plugin:review:security` |
+| Plugin 루트 `SKILL.md` | frontmatter `name`(없으면 플러그인 디렉토리명) | `/my-plugin:review` |
+
+**3) MCP prompt → `/mcp__<server>__<prompt>`** — MCP 서버가 노출한 **prompt**가 슬래시로 표면화 (밑줄 2개 구분)
+
+```text
+/mcp__github__list_prs          # github MCP 서버의 list_prs 프롬프트
+/mcp__linear__create_issue
+```
+> MCP의 **도구(tool)** 는 `mcp__server__tool` 문자열(권한 규칙·`allowedTools`용), **prompt**는 그 이름이 그대로 `/mcp__...` 슬래시 명령이 됩니다.
+
+**한눈에 비교**
+
+| 출처 | 슬래시 형태 | 이름 규칙 |
+| --- | --- | --- |
+| Skill(사용자/프로젝트) | `/name` | 디렉토리 이름 |
+| 레거시 command | `/name` | 파일명 |
+| 중첩 Skill(충돌 시) | `/path:name` | 하위경로:디렉토리 |
+| Plugin | `/plugin:name` | 플러그인:이름 |
+| MCP prompt | `/mcp__server__prompt` | mcp__서버__프롬프트 |
+
+> **네임스페이스의 목적**: 충돌 방지(내 `/deploy` ≠ 플러그인 `/plugin:deploy` ≠ MCP `/mcp__srv__deploy`), 출처 식별, 우선순위 해결(Enterprise > 사용자 > 프로젝트, skill > command).
+> 확인: `/`(자동완성 전체), `/skills`(skill 목록), `/mcp`(MCP 서버·prompt).
+
 ### 참고 링크
 
-- [명령어 참조 — 공식 문서(한국어)](https://code.claude.com/docs/ko/commands)
+- [명령어 참조 — 공식 문서(한국어)](https://code.claude.com/docs/ko/commands) · [Skills(이름 규칙)](https://code.claude.com/docs/ko/skills) · [MCP](https://code.claude.com/docs/ko/mcp)
 
 ---
 
