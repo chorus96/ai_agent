@@ -4,7 +4,7 @@
 > Claude Code를 라이브러리로 사용해 도구·에이전트 루프·컨텍스트 관리를 그대로 프로그래밍합니다.
 > 최종 정리일: 2026-08-27 · 출처: [Agent SDK Python 참조](https://code.claude.com/docs/en/agent-sdk/python) · [GitHub](https://github.com/anthropics/claude-agent-sdk-python)
 
-> 📚 관련 문서: 개념·인증·오픈소스 여부는 [`claude_code_tips.md`의 Claude Agent SDK 섹션](./claude_code_tips.md#claude-agent-sdk), CLI 사용은 [`claude_code_cli.md`](./claude_code_cli.md) 참고.
+> 📚 관련 문서: TypeScript 버전은 [`claude_agent_sdk_typescript.md`](./claude_agent_sdk_typescript.md), 개념·인증·오픈소스 여부는 [`claude_code_tips.md`의 Claude Agent SDK 섹션](./claude_code_tips.md#claude-agent-sdk), CLI 사용은 [`claude_code_cli.md`](./claude_code_cli.md) 참고.
 
 ## 목차
 

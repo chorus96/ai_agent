@@ -277,6 +277,7 @@ SDK로 만든 제품에 Claude 브랜딩은 선택 사항이며, **"Claude Agent
 ### 참고 링크
 
 - 📄 **Python 프로그래밍 상세 가이드**: [`claude_agent_sdk_python.md`](./claude_agent_sdk_python.md) (설치·query/Client·커스텀 도구·권한·인터럽트 등)
+- 📄 **TypeScript 프로그래밍 상세 가이드**: [`claude_agent_sdk_typescript.md`](./claude_agent_sdk_typescript.md) (query·Query 객체·tool()·canUseTool·스트리밍 등)
 - [Agent SDK 개요 — 공식 문서](https://code.claude.com/docs/en/agent-sdk/overview)
 - [Python SDK LICENSE (MIT)](https://github.com/anthropics/claude-agent-sdk-python/blob/main/LICENSE)
 - [Quickstart](https://code.claude.com/docs/en/agent-sdk/quickstart)
