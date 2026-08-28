@@ -20,8 +20,9 @@
 10. [Slash Commands vs Skill 비교](#slash-commands-vs-skill-비교)
 11. [Checkpoints & Rewind (체크포인트·되감기)](#checkpoints--rewind-체크포인트되감기)
 12. [Worktree vs Checkpoint](#worktree-vs-checkpoint)
-13. [Routines (스케줄된 작업)](#routines-스케줄된-작업)
-14. [Code Review (코드 리뷰)](#code-review-코드-리뷰)
+13. [세션 포크 (Session Fork / 분기)](#세션-포크-session-fork--분기)
+14. [Routines (스케줄된 작업)](#routines-스케줄된-작업)
+15. [Code Review (코드 리뷰)](#code-review-코드-리뷰)
 
 > 📚 관련 문서: 한글 자료·도서·GitHub 모음은 [`claude_code.md`](./claude_code.md), CLI 명령어·플래그·슬래시 명령어 레퍼런스는 [`claude_code_cli.md`](./claude_code_cli.md), Agent SDK 프로그래밍은 [Python](./claude_agent_sdk_python.md)·[TypeScript](./claude_agent_sdk_typescript.md) 참고.
 
@@ -1181,6 +1182,78 @@ description: API design patterns for this codebase
 ### 참고 링크
 
 - [worktree로 병렬 세션 실행 — 공식 문서(한국어)](https://code.claude.com/docs/ko/worktrees) · [Checkpointing](https://code.claude.com/docs/ko/checkpointing)
+
+---
+
+## 세션 포크 (Session Fork / 분기)
+
+**세션 분기(fork/branch) = 지금까지의 대화 복사본을 만들고 그쪽으로 전환**하는 것입니다. **원본 세션은 그대로 보존**되므로, 진행 중인 경로를 잃지 않고 **다른 접근을 시도**할 수 있습니다.
+
+> "이 방향으로 계속할지 모르겠는데 한번 다르게 해보고 싶다" — 원본을 지키면서 갈라져 실험할 때.
+
+### 만드는 방법
+
+```text
+# 세션 중 — /branch (이름 생략 시 첫 프롬프트에서 자동 명명)
+/branch try-streaming-approach
+```
+```bash
+# 시작 시 — --fork-session (--continue/--resume과 결합)
+claude --continue --fork-session
+claude --resume auth-refactor --fork-session
+```
+
+- `/branch` 확인 시 **두 세션 ID 출력**(새 분기 + 원본)
+- 분기 세션은 세션 선택기에서 **루트 세션 아래 그룹화**(`→`로 확장)
+
+### 원본으로 돌아가기
+
+원본은 변경되지 않고 선택기에 남습니다: `/resume <원본-ID>` 또는 `/resume <원본-이름>`, 또는 세션 선택기.
+
+> ⚠️ "이 세션에 대해 허용"한 권한은 **새 분기로 이월되지 않습니다.**
+> ⚠️ 분기 없이 **두 터미널에서 같은 세션을 재개하면 메시지가 하나의 기록으로 뒤섞입니다.** 병렬로 다르게 가려면 분기하세요.
+
+### 재개(resume) vs 분기(fork)
+
+| | **재개 (resume/continue)** | **분기 (fork/branch)** |
+| --- | --- | --- |
+| 대상 | **같은** 세션 이어감 | 대화 복사본으로 **갈라짐** |
+| 원본 | 그대로 이어씀 | **보존됨**(별도로 남음) |
+| 결과 | 하나의 타임라인 | **두 개의 갈래** |
+| 명령 | `--continue`·`--resume`·`/resume` | `/branch`·`--fork-session` |
+
+### Fork vs Rewind vs Worktree (헷갈리지 않기)
+
+세 가지가 비슷해 보이지만 **축이 다릅니다**.
+
+| 개념 | 축 | 무엇을 하나 |
+| --- | --- | --- |
+| **Fork(분기)** | **대화** 복사 | 대화 상태를 복제해 다른 방향 시도 (파일은 공유) |
+| **Checkpoint/Rewind** | **시간** 되감기 | 한 세션에서 이전 지점으로 undo |
+| **Worktree** | **공간** 격리 | 별도 디렉토리+브랜치에서 파일까지 격리 병렬 |
+
+> **Fork = "대화의 갈래", Worktree = "파일의 갈래", Rewind = "시간의 되감기"**.
+
+### SDK에서
+
+- **CLI**: `--fork-session` 플래그
+- **TypeScript SDK**: `Options`의 `forkSession: true`
+- **Python SDK**: `resume="<id>"`로 특정 세션 이어가기(포크는 CLI/TS의 명시 옵션)
+
+### 언제 쓰나
+
+- 한 방향을 시도하되 실패 시 되돌리고 싶을 때 (원본 유지 실험)
+- 같은 지점에서 **A안·B안 비교**
+- 긴 대화의 특정 지점부터 **다른 질문**으로 탐색 (원본 맥락 보존)
+
+### 핵심 정리
+
+> **세션 포크 = "지금까지의 대화를 복제해 원본을 지키며 다른 갈래로 진행"**.
+> 재개(같은 세션 이어감)와 달리 **두 갈래로 나뉘고 원본이 보존**됩니다. 대화의 갈래는 Fork, 파일의 갈래는 Worktree, 시간 되감기는 Rewind.
+
+### 참고 링크
+
+- [세션 관리(분기) — 공식 문서(한국어)](https://code.claude.com/docs/ko/sessions#branch-a-session)
 
 ---
 
