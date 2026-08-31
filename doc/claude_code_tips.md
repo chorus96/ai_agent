@@ -6,6 +6,7 @@
 ## 목차
 
 1. [Plugin vs MCP 비교](#plugin-vs-mcp-비교)
+   - [플러그인 마켓플레이스](#플러그인-마켓플레이스-plugin-marketplace)
 2. [Memory(메모리)의 역할 및 의미](#memory메모리의-역할-및-의미)
 3. [Claude Agent SDK](#claude-agent-sdk) — 개념·기능·인증(사내 LLM 포함)·오픈소스 여부
 4. [Subagents(서브에이전트) 활용법](#subagents서브에이전트-활용법)
@@ -79,6 +80,118 @@ Plugin (최상위 패키지)
 
 - [MCP를 통해 Claude Code를 도구에 연결하기 — 공식 문서(한국어)](https://code.claude.com/docs/ko/mcp)
 - [Claude code — plugin, commands, skills, agents, hooks 에 대하여 — Velog](https://velog.io/@ghdtjrrl94/Claude-code-plugin-commands-skills-agents-hooks-%EC%97%90-%EB%8C%80%ED%95%98%EC%97%AC)
+
+---
+
+## 플러그인 마켓플레이스 (Plugin Marketplace)
+
+**플러그인 마켓플레이스 = 여러 플러그인을 나열한 카탈로그(상점)** 입니다. 중앙 검색·버전 추적·자동 업데이트를 제공하고, git 저장소·URL·로컬 경로 등 여러 소스를 지원합니다.
+
+> **플러그인**이 "슬래시 커맨드·서브에이전트·Hooks·Skills·MCP 서버를 묶은 설치 패키지(앱)"라면, **마켓플레이스**는 그 플러그인들을 모아 배포하는 **상점(카탈로그)** 입니다.
+
+```
+마켓플레이스 (marketplace.json 카탈로그)
+├── 플러그인 A (skills + agents + hooks + MCP...)
+├── 플러그인 B
+└── 플러그인 C
+      │  /plugin install B@마켓플레이스이름  → 설치
+```
+
+### `/plugin` 명령어
+
+| 명령 | 기능 |
+| --- | --- |
+| `/plugin marketplace add <소스>` | 마켓플레이스 추가 |
+| `/plugin marketplace update <이름>` | 로컬 복사본 새로고침 |
+| `/plugin marketplace remove <이름>` | 마켓플레이스 제거 |
+| `/plugin install <플러그인>@<마켓플레이스>` | 플러그인 설치 |
+| `/plugin` | 관리 UI (list/enable/disable) |
+| `/reload-plugins` | 활성 플러그인 다시 로드 |
+
+### 마켓플레이스 추가 (소스 종류)
+
+```text
+/plugin marketplace add owner/repo                              # GitHub 저장소 (권장)
+/plugin marketplace add https://gitlab.com/company/plugins.git  # 다른 git
+/plugin marketplace add ./my-marketplace                        # 로컬 경로
+```
+
+- **각 사용자는 이름당 하나의 마켓플레이스만** 등록 (같은 이름 재추가 시 대체)
+- 상태는 **사용자당** `~/.claude/plugins/known_marketplaces.json`에 저장
+
+### 설치·사용 흐름
+
+```text
+/plugin marketplace add anthropics/claude-plugins-official
+/plugin install code-review@claude-plugins-official
+/reload-plugins        # 현재 세션에 반영
+```
+→ 설치된 플러그인의 skill은 `/plugin:name` 형태로 슬래시 메뉴에 노출 (네임스페이스)
+
+### 공식 마켓플레이스
+
+- **`claude-plugins-official`** — Anthropic 관리 고품질 플러그인 디렉토리 ([GitHub](https://github.com/anthropics/claude-plugins-official))
+- **`claude-plugins-community`** — 커뮤니티 플러그인 마켓플레이스 ([GitHub](https://github.com/anthropics/claude-plugins-community))
+
+> ⚠️ **예약된 이름**: `claude-plugins-official`·`anthropic-plugins`·`agent-skills` 등 공식 이름과 `official-claude-plugins` 같은 **사칭 이름은 타사 마켓플레이스가 쓸 수 없습니다.**
+
+### marketplace.json 구조
+
+저장소 루트의 **`.claude-plugin/marketplace.json`** 에 정의합니다.
+
+```json
+{
+  "name": "my-plugins",
+  "owner": { "name": "Your Name" },
+  "plugins": [
+    {
+      "name": "quality-review-plugin",
+      "source": "./plugins/quality-review-plugin",
+      "description": "Adds a quality-review skill"
+    }
+  ]
+}
+```
+
+- **마켓플레이스 소스**(카탈로그): `ref`(브랜치/태그) 지원, `sha` 미지원
+- **플러그인 소스**(개별): `ref` + `sha`(정확한 커밋) 모두 지원
+- 소스 종류: 상대경로 · GitHub · git · git 하위디렉토리 · npm
+
+### 팀에 배포 (설정으로 자동화)
+
+프로젝트 `.claude/settings.json`에 등록하면 팀원이 폴더를 신뢰할 때 자동 설치됩니다.
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "company-tools": { "source": { "source": "github", "repo": "your-org/claude-plugins" } }
+  },
+  "enabledPlugins": {
+    "code-formatter@company-tools": true,
+    "deployment-tools@company-tools": true
+  }
+}
+```
+
+> 컨테이너/CI는 `CLAUDE_CODE_PLUGIN_SEED_DIR`로 빌드 시 미리 채워 런타임 복제 없이 시작 가능.
+
+### 직접 만들기 (요약)
+
+1. 플러그인 생성(skills/agents/hooks/MCP 묶음) → 2. `.claude-plugin/marketplace.json` 작성 → 3. GitHub/GitLab 호스팅 → 4. `/plugin marketplace add owner/repo`로 공유
+
+### ⚠️ 보안 주의
+
+- 플러그인은 **hooks·MCP 서버 등 임의 코드를 포함**할 수 있으므로 **신뢰할 수 있는 마켓플레이스만 추가**
+- 공식/사칭 이름 차단·워크스페이스 신뢰 게이트가 있으나, 설치 전 소스 신뢰성·내용 확인 권장
+
+### 핵심 정리
+
+> **마켓플레이스 = 플러그인 카탈로그(상점), 플러그인 = 설치 패키지(앱)**.
+> `/plugin marketplace add`로 카탈로그를 추가하고 `/plugin install <플러그인>@<마켓플레이스>`로 설치. 공식(`claude-plugins-official`/`community`)이 있고 `marketplace.json`으로 직접 배포 가능.
+
+### 참고 링크
+
+- [플러그인 마켓플레이스 생성·배포 — 공식 문서(한국어)](https://code.claude.com/docs/ko/plugin-marketplaces) · [플러그인 검색·설치](https://code.claude.com/docs/ko/discover-plugins)
 
 ---
 
